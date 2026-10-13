@@ -1,0 +1,27 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  width: 340px; margin: 0; padding: 14px;
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #0c131f; color: #e6ecf5;
+}
+header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+header .link { margin-left: auto; }
+label { display: block; margin-bottom: 8px; color: #8b9ab2; }
+label.row { display: flex; align-items: center; gap: 6px; }
+input:not([type="checkbox"]), textarea {
+  display: block; width: 100%; margin-top: 3px; padding: 7px 9px;
+  background: #1a2639; color: #e6ecf5; border: 1px solid #25334a; border-radius: 8px; font: inherit;
+}
+input:focus, textarea:focus { outline: none; border-color: #f2b43c; }
+input[type="checkbox"] { accent-color: #f2b43c; }
+button { font: inherit; cursor: pointer; }
+.primary { width: 100%; margin-top: 4px; padding: 9px; border: 0; border-radius: 8px; background: #f2b43c; color: #211602; font-weight: 600; }
+.primary:disabled { opacity: .6; cursor: default; }
+.link { background: none; border: 0; color: #8b9ab2; padding: 0; }
+.link:hover { color: #e6ecf5; }
+.muted { color: #8b9ab2; margin-top: 0; }
+#status { min-height: 18px; margin: 10px 0 0; }
+#status.ok { color: #34c4a0; }
+#status.err { color: #ef6b6b; }
+#status a { color: #f2b43c; }

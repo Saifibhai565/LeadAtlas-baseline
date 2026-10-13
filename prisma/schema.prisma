@@ -1,0 +1,722 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("USER") // USER | ADMIN (ADMIN = you, the platform owner)
+  blocked      Boolean  @default(false)
+
+  // Email (Phase 10)
+  emailVerifiedAt  DateTime?
+  lastLoginAt      DateTime?
+  emailAlerts      Boolean   @default(true) // watch results by email
+  expiryReminderAt DateTime?
+
+  // Growth (Phase 12)
+  referralCode       String?   @unique
+  referredById       String?
+  referralRewardedAt DateTime?
+  digestSentAt       DateTime?
+  feedToken          String?   @unique // private CSV feed for Google Sheets
+  categoryBoosts     String? // JSON { category: points } learned from won and lost deals
+
+  // Instagram (official Graph API) and SMS provider settings, per workspace
+  igUserId   String?
+  igTokenEnc String?
+  smsUrl     String? // e.g. https://provider/api?key=XXX&to={to}&text={message}
+  smsMethod  String? // GET | POST
+  smsBody    String? // body template for POST, with {to} and {message}
+
+  // Team: members point at the workspace owner. Owners have ownerId = null.
+  ownerId      String?
+  owner        User?    @relation("Team", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      User[]   @relation("Team")
+
+  // Billing (owners only)
+  planId        String?
+  plan          Plan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planExpiresAt DateTime?
+
+  // Branding (owners): used on shared website reports
+  brandName     String?
+  brandColor    String?
+  brandWhatsapp String?
+  customDomain  String?   @unique // white-label, e.g. leads.myagency.com
+  credits      Int      @default(500)
+  businessName String?
+  offer        String? // what you sell, used by the AI writer
+  signature    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  jobs  Job[]
+  leads Lead[]
+  views      SavedView[]
+  templates  Template[]
+  activities Activity[]
+  payments      Payment[]
+  invites       Invite[]
+  watches       Watch[]
+  emailTokens   EmailToken[]
+  mailboxes     Mailbox[]
+  sequences     Sequence[]
+  campaigns     Campaign[]
+  waAccount     WaAccount?
+  notifications Notification[]
+  apiKeys       ApiKey[]
+  webhooks      Webhook[]
+  assigned   Lead[]     @relation("Assigned")
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  userId      String
+  engineJobId String   @unique
+  name        String
+  keywords    String // JSON array of strings
+  lang        String   @default("en")
+  depth       Int      @default(1)
+  withEmails  Boolean  @default(false)
+  extraReviews Boolean @default(false)
+  goal         Int? // how many NEW leads the person wants from this search
+  groupId      String? // follow-up searches started to reach the goal share this
+  attempt      Int     @default(0)
+  autoCheck   Boolean  @default(false) // run website checks on new leads
+  watchId     String?
+  watch       Watch?   @relation(fields: [watchId], references: [id], onDelete: SetNull)
+  status      String   @default("PENDING") // PENDING | RUNNING | IMPORTING | DONE | FAILED
+  resultCount Int      @default(0)
+  newCount    Int      @default(0)
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  finishedAt  DateTime?
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads Lead[]
+
+  @@index([userId, createdAt])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  userId      String
+  jobId       String?
+  placeKey    String
+  title       String
+  category    String?
+  address     String?
+  phone       String?
+  website     String?
+  emails      String? // comma separated
+  rating      Float?
+  reviewCount Int?
+  latitude    Float?
+  longitude   Float?
+  mapsUrl     String?
+  priceRange  String?
+  status      String   @default("NEW") // NEW | CONTACTED | INTERESTED | WON | LOST
+  source      String   @default("MAPS") // MAPS | WEB
+  sourceUrl   String?
+
+  // Website checks (Phase 3)
+  enrichStatus String    @default("NONE") // NONE | QUEUED | RUNNING | DONE | FAILED
+  enrichedAt   DateTime?
+  emailStatus  String? // VALID | INVALID | UNKNOWN  (does the email's domain accept mail)
+  socials      String? // JSON: { facebook, instagram, linkedin, x, youtube, tiktok, whatsapp }
+  extraPhones  String? // comma separated, found on the website
+  auditScore   Int?
+  auditIssues  String? // comma separated codes: NO_HTTPS, NOT_MOBILE, SLOW, NO_TITLE, NO_DESCRIPTION, SITE_DOWN
+  tech         String? // comma separated: WordPress, Shopify, Google Analytics...
+  siteLoadMs   Int?
+  siteTitle    String?
+
+  // Sales (Phase 4)
+  score        Int? // 0-100, how promising the lead is
+  followUpAt   DateTime?
+  dealValue    Float?
+  lastContactAt DateTime?
+  assignedToId  String?
+  reportToken   String?   @unique
+
+  // AI (Phase 8)
+  aiBrief   String? // JSON: { summary, needs, pitch, objection, channel }
+  aiBriefAt DateTime?
+  aiMessage String? // last AI-written first message (bulk writer)
+
+  // Google Maps details and reviews (Phase 11)
+  description String?
+  openHours   String? // JSON from Google
+  thumbnail   String?
+  reviews     String? // JSON [{ n: name, r: rating, t: text, w: when }]
+  ratingDist  String? // JSON { "1": n, ..., "5": n }
+  lowReviews  Int? // number of 1 and 2 star reviews
+  aiReviews   String? // JSON insights from the reviews
+  aiReviewsAt DateTime?
+
+  tags        String? // comma separated, e.g. "hot,clinic,follow up"
+
+  // Sales tools (Phase 15)
+  demoToken          String?   @unique
+  demoHtml           String? // AI-made demo homepage for businesses without a good website
+  demoAt             DateTime?
+  demoViewedAt       DateTime?
+  proposalToken      String?   @unique
+  proposal           String? // JSON proposal
+  proposalAt         DateTime?
+  proposalViewedAt   DateTime?
+  proposalAcceptedAt DateTime?
+
+  // Official channels (Phase 16)
+  optIn       Boolean   @default(false) // agreed to receive WhatsApp/SMS messages
+  optInAt     DateTime?
+  igFollowers Int?
+  igPosts     Int?
+  igCheckedAt DateTime?
+
+  // Lead signals (Phase 17)
+  signals         String? // comma codes: BUSY, NEW_BIZ, SOCIAL_ONLY, ADS, MOBILE, CHAIN, DOMAIN_EXPIRING, HAS_OWNER, RATING_DROP, BAD_REVIEW
+  popularTimes    String? // JSON from Google
+  builtBy         String? // agency named in the website footer
+  ownerName       String?
+  domainExpiresAt DateTime?
+  branches        Int?
+  bestTime        String?
+  lastSignal      String?
+  lastSignalAt    DateTime?
+
+  // Review services (Phase 18)
+  seo            String? // JSON SEO audit of the homepage
+  ecom           String? // JSON online-store audit
+  reviewToken    String? @unique
+  monitorWatchId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job        Job?       @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  assignedTo User?      @relation("Assigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  activities    Activity[]
+  emailMessages EmailMessage[]
+  enrollments   SequenceEnrollment[]
+  campaignItems CampaignItem[]
+  waMessages    WaMessage[]
+  smsMessages   SmsMessage[]
+
+  @@unique([userId, placeKey])
+  @@index([userId, createdAt])
+  @@index([userId, category])
+  @@index([enrichStatus])
+  @@index([userId, status, score])
+  @@index([userId, followUpAt])
+}
+
+model SavedView {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  query     String // URL query string of the filters
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  channel   String   @default("WHATSAPP") // WHATSAPP | EMAIL
+  subject   String?
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  leadId    String
+  type      String // NOTE | STATUS | MESSAGE | FOLLOW_UP
+  body      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+}
+
+model Plan {
+  id        String   @id @default(cuid())
+  name      String
+  price     Int // per month, in the currency below
+  priceUsd  Int? // optional price in US dollars, for USD and crypto payment methods
+  currency  String   @default("PKR")
+  credits   Int // credits added each paid month
+  seats     Int      @default(1) // people in the team, including the owner
+  ai        Boolean  @default(false) // AI writer + web extractor
+  api       Boolean  @default(false) // API keys, webhooks, Chrome extension
+  outreach  Boolean  @default(false) // send emails and sequences from connected mailboxes
+  whiteLabel Boolean @default(false) // run the app on the customer's own domain with their brand
+  lsVariantId String? // Lemon Squeezy variant id for card payments
+  active    Boolean  @default(true)
+  sort      Int      @default(0)
+  blurb     String?
+  createdAt DateTime @default(now())
+
+  users    User[]
+  payments Payment[]
+}
+
+model Payment {
+  id         String    @id @default(cuid())
+  userId     String // workspace owner
+  planId     String
+  amount     Int
+  currency   String
+  method     String // JAZZCASH | EASYPAISA | BANK | OTHER
+  reference  String // transaction id
+  payerName  String?
+  payerPhone String?
+  couponCode String?
+  discount   Int       @default(0) // amount taken off the plan price
+  methodId   String?
+  invoiceNo  Int?      @unique
+  providerRef String?  @unique // card payment id from the payment provider
+  status     String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  adminNote  String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+model Invite {
+  id        String    @id @default(cuid())
+  ownerId   String
+  email     String
+  token     String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model AppSetting {
+  key   String @id
+  value String
+}
+
+model Watch {
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  keywords     String // JSON array
+  depth        Int       @default(1)
+  lang         String    @default("en")
+  autoCheck    Boolean   @default(true)
+  everyDays    Int       @default(7)
+  active       Boolean   @default(true)
+  nextRunAt    DateTime
+  lastRunAt    DateTime?
+  lastNewCount Int?
+  createdAt    DateTime  @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs Job[]
+
+  @@index([active, nextRunAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String // workspace
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String // workspace
+  name       String
+  prefix     String // first characters, shown so people can tell keys apart
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Webhook {
+  id         String    @id @default(cuid())
+  userId     String // workspace
+  url        String
+  secret     String
+  events     String // comma separated: lead.created, search.finished, lead.status_changed
+  active     Boolean   @default(true)
+  lastStatus Int?
+  lastAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailToken {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // VERIFY | RESET
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+// ---------- Email outreach (Phase 11) ----------
+
+model Mailbox {
+  id          String   @id @default(cuid())
+  userId      String // workspace
+  label       String
+  fromName    String
+  fromEmail   String
+  host        String
+  port        Int      @default(587)
+  username    String
+  passEnc     String // encrypted with AUTH_SECRET
+  dailyLimit  Int      @default(40)
+  gapSeconds  Int      @default(120) // wait between two emails from this mailbox
+  trackOpens  Boolean  @default(false)
+  active      Boolean  @default(true)
+  lastError   String?
+  lastSentAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    EmailMessage[]
+  enrollments SequenceEnrollment[]
+}
+
+model EmailMessage {
+  id           String    @id @default(cuid())
+  userId       String // workspace
+  leadId       String?
+  mailboxId    String
+  enrollmentId String?
+  step         Int?
+  toEmail      String
+  subject      String
+  body         String
+  status       String    @default("QUEUED") // QUEUED | SENT | FAILED | CANCELLED | SKIPPED
+  error        String?
+  scheduledAt  DateTime  @default(now())
+  sentAt       DateTime?
+  openedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  lead    Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  mailbox Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledAt])
+  @@index([userId, createdAt])
+  @@index([mailboxId, sentAt])
+}
+
+model Sequence {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  name      String
+  steps     String // JSON [{ delayDays, subject, body }]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments SequenceEnrollment[]
+}
+
+model SequenceEnrollment {
+  id          String    @id @default(cuid())
+  userId      String // workspace
+  sequenceId  String
+  leadId      String
+  mailboxId   String
+  currentStep Int       @default(0) // index of the next step to send
+  nextAt      DateTime
+  status      String    @default("ACTIVE") // ACTIVE | REPLIED | FINISHED | STOPPED | UNSUBSCRIBED | BOUNCED
+  createdAt   DateTime  @default(now())
+  endedAt     DateTime?
+
+  sequence Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  mailbox  Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+
+  @@unique([sequenceId, leadId])
+  @@index([status, nextAt])
+}
+
+model Suppression {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  email     String
+  reason    String // UNSUBSCRIBED | BOUNCED | MANUAL
+  createdAt DateTime @default(now())
+
+  @@unique([userId, email])
+}
+
+model Coupon {
+  id        String    @id @default(cuid())
+  code      String    @unique // stored in capitals
+  percent   Int       @default(0) // 1-100, or 0 when amount is used
+  amount    Int       @default(0) // fixed amount off, in the plan's currency
+  planId    String? // only for this plan, or any plan when empty
+  maxUses   Int? // empty = unlimited
+  uses      Int       @default(0) // approved payments that used it
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorEmail String
+  action     String // e.g. payment.approve, user.edit, user.impersonate
+  targetType String?
+  targetId   String?
+  detail     String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ---------- WhatsApp / SMS campaigns (Phase 14) ----------
+// Messages are prepared by the app and sent one by one by a person, from their own phone or WhatsApp.
+
+model Campaign {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  name      String
+  channel   String // WHATSAPP | SMS
+  templates String // JSON array of message bodies
+  query     String // the lead filters used to build it
+  apiConfig String? // for WHATSAPP_API: { name, language, params[] }
+  status    String   @default("ACTIVE") // ACTIVE | DONE
+  createdAt DateTime @default(now())
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CampaignItem[]
+}
+
+model CampaignItem {
+  id            String    @id @default(cuid())
+  campaignId    String
+  leadId        String
+  phone         String
+  templateIndex Int
+  message       String
+  status        String    @default("PENDING") // PENDING | SENT | SKIPPED
+  sentAt        DateTime?
+  position      Int
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead     Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, leadId])
+  @@index([campaignId, status, position])
+}
+
+// ---------- WhatsApp Business (official Cloud API) and SMS provider (Phase 16) ----------
+
+model WaAccount {
+  id             String   @id @default(cuid())
+  userId         String   @unique // workspace
+  phoneNumberId  String
+  wabaId         String
+  displayNumber  String?
+  verifiedName   String?
+  accessTokenEnc String
+  appSecretEnc   String?
+  verifyToken    String
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WaMessage {
+  id          String   @id @default(cuid())
+  userId      String // workspace
+  leadId      String?
+  contact     String // phone number in international digits, e.g. 923001234567
+  direction   String // IN | OUT
+  kind        String   @default("text") // text | template | other
+  body        String
+  waId        String?  @unique // WhatsApp's message id
+  status      String   @default("sent") // queued | sent | delivered | read | failed | received
+  error       String?
+  sentById    String?
+  createdAt   DateTime @default(now())
+
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([userId, contact, createdAt])
+  @@index([userId, createdAt])
+}
+
+model SmsMessage {
+  id        String    @id @default(cuid())
+  userId    String // workspace
+  leadId    String?
+  toNumber  String
+  body      String
+  status    String    @default("QUEUED") // QUEUED | SENT | FAILED
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+// ---------- Rank tracker, websites, review feedback (Phase 18) ----------
+
+model RankCheck {
+  id         String    @id @default(cuid())
+  userId     String // workspace
+  leadId     String?
+  keyword    String
+  targetName String
+  targetKey  String?
+  centerLat  Float
+  centerLng  Float
+  size       Int // 3 = 3x3 grid, 5 = 5x5
+  spacingKm  Float
+  status     String    @default("RUNNING") // RUNNING | DONE | FAILED
+  points     String // JSON [{ lat, lng, engineJobId, status, rank }]
+  avgRank    Float?
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  @@index([status])
+  @@index([userId, createdAt])
+}
+
+model Site {
+  id           String   @id @default(cuid())
+  userId       String // workspace
+  leadId       String?
+  name         String
+  slug         String   @unique
+  customDomain String?  @unique
+  html         String
+  published    Boolean  @default(false)
+  views        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  leadId    String
+  name      String?
+  contact   String?
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+// ---------- Error tracking (Phase 19) ----------
+model ErrorLog {
+  id          String   @id @default(cuid())
+  fingerprint String   @unique // same error, same place = one row
+  source      String // SERVER | BROWSER
+  message     String
+  stack       String?
+  path        String?
+  count       Int      @default(1)
+  lastUserId  String?
+  resolved    Boolean  @default(false)
+  firstSeen   DateTime @default(now())
+  lastSeen    DateTime @default(now())
+
+  @@index([resolved, lastSeen])
+}
+
+// ---------- Support (Phase 21) ----------
+model SupportTicket {
+  id        String   @id @default(cuid())
+  userId    String // the person who asked
+  subject   String
+  status    String   @default("AI") // AI (bot only) | OPEN (waiting for team) | ANSWERED | CLOSED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages SupportMessage[]
+
+  @@index([status, updatedAt])
+  @@index([userId, updatedAt])
+}
+
+model SupportMessage {
+  id        String   @id @default(cuid())
+  ticketId  String
+  sender    String // USER | AI | TEAM
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+// ---------- Payment methods the Super Admin sets up (Phase 22) ----------
+model PaymentMethod {
+  id            String   @id @default(cuid())
+  name          String // e.g. "Meezan Bank", "JazzCash", "USDT (TRC20)"
+  kind          String // BANK | WALLET | CRYPTO | OTHER
+  currency      String   @default("PKR") // PKR, USD, USDT...
+  network       String? // TRC20, BEP20, ERC20 for crypto
+  accountTitle  String?
+  accountNumber String? // account number, IBAN, wallet number or crypto address
+  details       String? // extra instructions
+  qrImage       String? // data URL
+  active        Boolean  @default(true)
+  sort          Int      @default(0)
+  createdAt     DateTime @default(now())
+}

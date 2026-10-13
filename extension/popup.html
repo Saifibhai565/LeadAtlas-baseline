@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icon48.png" alt="" width="20" height="20" />
+      <strong>Save lead</strong>
+      <button id="gear" class="link" title="Connection settings">Settings</button>
+    </header>
+
+    <section id="setup" hidden>
+      <p class="muted">Connect to your account. Find your API key under “API and extension” in the app.</p>
+      <label>App address <input id="appUrl" placeholder="http://localhost:3000" /></label>
+      <label>API key <input id="apiKey" placeholder="la_…" /></label>
+      <button id="saveSetup" class="primary">Connect</button>
+    </section>
+
+    <section id="main" hidden>
+      <form id="form">
+        <label>Business name <input name="name" required /></label>
+        <label>Category <input name="category" /></label>
+        <label>Phone <input name="phone" /></label>
+        <label>Email <input name="email" /></label>
+        <label>Website <input name="website" /></label>
+        <label>Address <textarea name="address" rows="2"></textarea></label>
+        <label class="row"><input type="checkbox" name="check" checked /> Check their website after saving</label>
+        <button type="submit" class="primary">Save to LeadAtlas</button>
+      </form>
+    </section>
+
+    <p id="status" role="status"></p>
+    <script src="popup.js"></script>
+  </body>
+</html>

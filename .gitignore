@@ -1,0 +1,13 @@
+node_modules
+.next
+.env
+prisma/*.db
+prisma/*.db-journal
+next-env.d.ts
+*.tsbuildinfo
+prisma/*.db-wal
+prisma/*.db-shm
+deploy/.env
+deploy/engine
+deploy/data
+deploy/backups

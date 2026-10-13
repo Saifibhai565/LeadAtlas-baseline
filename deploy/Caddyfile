@@ -1,0 +1,25 @@
+{
+	email {$ACME_EMAIL}
+	# White-label: get certificates for agency domains only when the app says they're ours
+	on_demand_tls {
+		ask http://app:3000/api/domains/check
+	}
+}
+
+{$DOMAIN} {
+	encode gzip zstd
+	reverse_proxy app:3000
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
+# Agency domains (CNAME to {$DOMAIN})
+https:// {
+	tls {
+		on_demand
+	}
+	encode gzip zstd
+	reverse_proxy app:3000
+}

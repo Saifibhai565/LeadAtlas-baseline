@@ -1,0 +1,83 @@
+# LeadAtlas production stack
+#   app     - the Next.js dashboard (port 3000, only reachable through Caddy)
+#   engine  - the Go Google Maps scraper (internal only, never exposed: it has no login)
+#   caddy   - HTTPS with free automatic certificates
+#   cron    - runs watches every 5 minutes
+#   backup  - daily copy of the database, keeps 14 days
+
+services:
+  app:
+    build:
+      context: ..
+      args:
+        NEXT_PUBLIC_APP_NAME: ${APP_NAME:-LeadAtlas}
+        NEXT_PUBLIC_DEFAULT_COUNTRY_CODE: ${DEFAULT_COUNTRY_CODE:-92}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/data/prod.db
+      ENGINE_URL: http://engine:8080
+    volumes:
+      - ./data:/data
+    depends_on:
+      - engine
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  engine:
+    build: ./engine
+    restart: unless-stopped
+    command: ["-web", "-data-folder", "/gmapsdata", "-addr", ":8080"]
+    volumes:
+      - ./gmapsdata:/gmapsdata
+    shm_size: "1gb"
+    # No "ports:" on purpose. Only the app can reach it.
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  cron:
+    image: alpine:3.20
+    restart: unless-stopped
+    env_file: .env
+    command: >
+      sh -c 'while true; do
+        wget -qO- "http://app:3000/api/cron?secret=$${CRON_SECRET}" > /dev/null 2>&1;
+        sleep 300;
+      done'
+    depends_on:
+      - app
+
+  backup:
+    image: alpine:3.20
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+      - ./backups:/backups
+    command: >
+      sh -c 'apk add --no-cache sqlite > /dev/null &&
+      while true; do
+        sqlite3 /data/prod.db ".backup /backups/leadatlas-$$(date +%F).db" &&
+        find /backups -name "leadatlas-*.db" -mtime +14 -delete;
+        sleep 86400;
+      done'
+
+volumes:
+  caddy_data:
+  caddy_config:
