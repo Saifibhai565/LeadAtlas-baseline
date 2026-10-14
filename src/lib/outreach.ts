@@ -148,7 +148,7 @@ export async function processOutbox() {
     if (sentToday >= mb.dailyLimit) continue;
 
     const msg = await db.emailMessage.findFirst({
-      where: { mailboxId: mb.id, status: "QUEUED", scheduledAt: { lte: new Date() } },
+      where: { mailboxId: mb.id, status: "QUEUED", scheduledAt: { lte: new Date() }, batchId: null },
       orderBy: { scheduledAt: "asc" },
     });
     if (!msg) continue;
@@ -179,6 +179,7 @@ export async function processOutbox() {
       await transport.sendMail({
         from: `${mb.fromName} <${mb.fromEmail}>`,
         to: msg.toEmail,
+        replyTo: mb.replyTo || undefined,
         subject: msg.subject,
         text,
         html,

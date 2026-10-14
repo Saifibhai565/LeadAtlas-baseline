@@ -14,6 +14,7 @@ import { Competitors, GbpCheck, SalesTools } from "./sales-tools";
 import { SignalsPanel } from "./signals-panel";
 import { ReviewTools } from "./review-tools";
 import { AuditList } from "./audit-panels";
+import { LeadDetailsPanel } from "./lead-details";
 import { useFeatures } from "./use-features";
 import { ReviewsPanel } from "./reviews-panel";
 import { scoreLabel } from "@/lib/score";
@@ -79,6 +80,8 @@ type Detail = {
   domainExpiresAt: string | null;
   branches: number | null;
   seo: string | null;
+  details: string | null;
+  priceRange: string | null;
   ecom: string | null;
   enrollments: { id: string; status: string; currentStep: number; nextAt: string; sequence: { name: string; steps: string } }[];
   emailMessages: { id: string; subject: string; status: string; sentAt: string | null; openedAt: string | null; error: string | null; createdAt: string }[];
@@ -525,6 +528,10 @@ export function LeadDrawer({ id, onClose, onChanged }: { id: string; onClose: ()
                   </li>
                 )}
               </ul>
+            </Section>
+
+            <Section title="All details">
+              <LeadDetailsPanel lead={lead} />
             </Section>
 
             {feats.has("signals") && (

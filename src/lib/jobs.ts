@@ -5,6 +5,7 @@ import { EngineError, engineDownloadCsv, engineJobStatus } from "./engine";
 import { kickEnrichment } from "./enrich";
 import { scoreLead } from "./score";
 import { notify } from "./notify";
+import { cleanEmails, mapsDetails } from "./lead-details";
 import { recomputeSignals } from "./signals-server";
 import { emails } from "./emails";
 import { appUrl, sendMailLater } from "./mail";
@@ -70,7 +71,7 @@ function toLead(row: Row) {
   if (!title) return null;
   const placeKey =
     text(row.place_id) ?? text(row.cid) ?? text(row.data_id) ?? `${title}|${text(row.address) ?? ""}`.toLowerCase();
-  const emails = Array.from(new Set((row.emails ?? "").match(EMAIL_RE) ?? [])).map((e) => e.toLowerCase());
+  const emails = cleanEmails((row.emails ?? "").match(EMAIL_RE) ?? []);
   const rating = num(row.review_rating);
   const reviews = num(row.review_count);
   const reviewList = reviewsFrom(row);
@@ -97,6 +98,7 @@ function toLead(row: Row) {
     ratingDist: dist ? JSON.stringify(dist) : null,
     lowReviews: low,
     popularTimes: text(row.popular_times)?.slice(0, 5000) ?? null,
+    details: mapsDetails(row),
   };
 }
 
@@ -155,6 +157,7 @@ async function importRows(jobId: string, engineJobId: string, userId: string, fi
         reviews: now.reviews ?? undefined,
         ratingDist: now.ratingDist ?? undefined,
         popularTimes: now.popularTimes ?? undefined,
+        details: now.details ?? undefined,
         ...(events.length ? { lastSignal: events.join(","), lastSignalAt: new Date() } : {}),
       },
     });

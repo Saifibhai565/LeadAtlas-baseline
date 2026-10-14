@@ -195,6 +195,7 @@ model Lead {
   lastSignalAt    DateTime?
 
   // Review services (Phase 18)
+  details        String? // JSON: Google owner, menu, bookings, photos, features, address parts, IDs
   seo            String? // JSON SEO audit of the homepage
   ecom           String? // JSON online-store audit
   reviewToken    String? @unique
@@ -416,6 +417,8 @@ model Mailbox {
   dailyLimit  Int      @default(40)
   gapSeconds  Int      @default(120) // wait between two emails from this mailbox
   trackOpens  Boolean  @default(false)
+  platform    Boolean  @default(false) // sends through the platform's shared server (Super Admin settings)
+  replyTo     String? // replies go here
   active      Boolean  @default(true)
   lastError   String?
   lastSentAt  DateTime?
@@ -442,6 +445,7 @@ model EmailMessage {
   sentAt       DateTime?
   openedAt     DateTime?
   createdAt    DateTime  @default(now())
+  batchId      String? // bulk send this message belongs to
 
   lead    Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
   mailbox Mailbox  @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
@@ -449,6 +453,7 @@ model EmailMessage {
   @@index([status, scheduledAt])
   @@index([userId, createdAt])
   @@index([mailboxId, sentAt])
+  @@index([batchId, status])
 }
 
 model Sequence {
@@ -719,4 +724,21 @@ model PaymentMethod {
   active        Boolean  @default(true)
   sort          Int      @default(0)
   createdAt     DateTime @default(now())
+}
+
+// ---------- Bulk email (pasted lists) ----------
+model EmailBatch {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  mailboxId String
+  name      String
+  subject   String
+  fromName  String?
+  replyTo   String?
+  total     Int
+  status    String   @default("ACTIVE") // ACTIVE | PAUSED | DONE | CANCELLED
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([status])
 }

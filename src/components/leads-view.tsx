@@ -27,6 +27,7 @@ import { Input, Select } from "@/components/ui/field";
 import { Badge, Panel } from "@/components/ui/panel";
 import { useAiAvailable } from "./ai-panels";
 import { EnrollControls } from "./enroll-controls";
+import { SocialLinks } from "./social-links";
 import { useFeatures } from "./use-features";
 import { SIGNAL_INFO } from "@/lib/signals";
 import { ImportLeads } from "./import-leads";
@@ -935,11 +936,7 @@ export function LeadsView() {
                                 Message ready
                               </Badge>
                             )}
-                            {l.socials && (
-                              <Badge tone="neutral" title={Object.keys(JSON.parse(l.socials)).join(", ")}>
-                                {Object.keys(JSON.parse(l.socials)).length} social
-                              </Badge>
-                            )}
+                            {l.socials && <SocialLinks json={l.socials} />}
                           </div>
                         </td>
                         <td className="px-4 py-3">

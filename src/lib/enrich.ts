@@ -3,6 +3,7 @@ import { promises as dns } from "node:dns";
 import { db } from "./db";
 import { recomputeLeadSignals } from "./signals-server";
 import { refreshInstagram } from "./instagram";
+import { cleanEmails } from "./lead-details";
 import { fetchPage, normalizeUrl, type Page } from "./web";
 
 // ---------- extraction ----------
@@ -16,6 +17,10 @@ const SOCIAL_PATTERNS: [keyof Socials, RegExp][] = [
   ["x", /https?:\/\/(?:www\.)?(?:twitter|x)\.com\/(?!intent|share|home)[A-Za-z0-9_]{1,15}(?=["'\/\s?#<])/i],
   ["youtube", /https?:\/\/(?:www\.)?youtube\.com\/(?:@|channel\/|c\/|user\/)[^"'\s<>?#]+/i],
   ["tiktok", /https?:\/\/(?:www\.)?tiktok\.com\/@[^"'\s<>?#]+/i],
+  ["pinterest", /https?:\/\/(?:[a-z]{2}\.|www\.)?pinterest\.[a-z.]+\/(?!pin\/)[A-Za-z0-9_]+\/?(?=["'\s?#<])/i],
+  ["telegram", /https?:\/\/(?:t\.me|telegram\.me)\/[A-Za-z0-9_]{4,}/i],
+  ["snapchat", /https?:\/\/(?:www\.)?snapchat\.com\/add\/[A-Za-z0-9._-]+/i],
+  ["threads", /https?:\/\/(?:www\.)?threads\.net\/@[A-Za-z0-9._]+/i],
 ];
 
 const TECH: [string, RegExp][] = [
@@ -38,13 +43,15 @@ const TECH: [string, RegExp][] = [
   ["Online booking", /calendly\.com|booksy|fresha\.com|setmore/i],
 ];
 
-export type Socials = Partial<Record<"facebook" | "instagram" | "linkedin" | "x" | "youtube" | "tiktok" | "whatsapp", string>>;
+export type Socials = Partial<
+  Record<"facebook" | "instagram" | "linkedin" | "x" | "youtube" | "tiktok" | "whatsapp" | "pinterest" | "telegram" | "snapchat" | "threads", string>
+>;
 
 function findEmails(html: string) {
   const found = new Set<string>();
   for (const m of html.matchAll(/mailto:([^"'?\s>]+)/gi)) found.add(decodeURIComponent(m[1]).toLowerCase());
   for (const m of html.match(EMAIL_RE) ?? []) found.add(m.toLowerCase());
-  return Array.from(found).filter((e) => !BAD_EMAIL.test(e) && e.length < 80);
+  return cleanEmails(Array.from(found).filter((e) => !BAD_EMAIL.test(e)));
 }
 
 function findPhones(html: string) {

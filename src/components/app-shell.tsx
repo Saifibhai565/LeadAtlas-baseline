@@ -17,6 +17,7 @@ import {
   KanbanSquare,
   LayoutDashboard,
   LogOut,
+  Mails,
   Menu,
   Moon,
   Sun,
@@ -50,6 +51,7 @@ const NAV = [
   { href: "/inbox", label: "WhatsApp inbox", icon: Inbox },
   { href: "/campaigns", label: "WhatsApp & SMS", icon: MessageCircle },
   { href: "/outreach", label: "Email outreach", icon: Send },
+  { href: "/bulk-email", label: "Bulk email", icon: Mails },
   { href: "/templates", label: "Templates", icon: MessageSquareText },
   { href: "/sites", label: "Websites", icon: LayoutTemplate },
 ];
