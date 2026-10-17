@@ -3,12 +3,14 @@ import { db } from "./db";
 import { syncActiveJobs } from "./jobs";
 import { notify } from "./notify";
 import { emails } from "./emails";
-import { sendMailLater } from "./mail";
+import { sendMailLater, appUrl} from "./mail";
 import { createSearch, SearchError } from "./searches";
 import { processOutbox, processSequences } from "./outreach";
 import { processApiCampaigns } from "./campaign-send";
 import { processSms } from "./sms";
 import { processRankChecks } from "./rank";
+import { processScrapeTasks } from "./bank";
+import { processCompetitorWatches } from "./competitors";
 
 const g = globalThis as unknown as { __tick?: { running: boolean; last: number } };
 const MIN_GAP_MS = 60_000;
@@ -103,7 +105,57 @@ export async function tick(force = false) {
     await processOutbox().catch((e) => console.error("Outbox:", e));
     await processApiCampaigns().catch((e) => console.error("Campaigns:", e));
     await processSms().catch((e) => console.error("SMS:", e));
+    { const { kickBulkSms } = await import("./bulk-sms"); kickBulkSms(); }
+    // Warmup runs about every 30 minutes
+    const gw = globalThis as unknown as { __warmupAt?: number };
+    if (!gw.__warmupAt || Date.now() - gw.__warmupAt > 30 * 60_000) {
+      gw.__warmupAt = Date.now();
+      const { runWarmup } = await import("./warmup");
+      await runWarmup().catch((e) => console.error("Warmup:", e));
+    }
     await processRankChecks().catch((e) => console.error("Rank:", e));
+    await processScrapeTasks().catch((e) => console.error("Bank:", e));
+    await processCompetitorWatches().catch((e) => console.error("Competitors:", e));
+
+    // AI Autopilot: once a day per account
+    const ga = globalThis as unknown as { __autopilotAt?: number };
+    if (!ga.__autopilotAt || Date.now() - ga.__autopilotAt > 60 * 60_000) {
+      ga.__autopilotAt = Date.now();
+      const { runAutopilot } = await import("./autopilot");
+      await runAutopilot().catch((e) => console.error("Autopilot:", e));
+    }
+
+    // Monday: email the analytics report to owners who turned it on
+    const nowR = new Date();
+    if (nowR.getDay() === 1 && nowR.getHours() >= 8) {
+      const sixDays = new Date(Date.now() - 6 * 86400_000);
+      const owners = await db.user.findMany({
+        where: { ownerId: null, blocked: false, weeklyReport: true, OR: [{ weeklyReportAt: null }, { weeklyReportAt: { lt: sixDays } }] },
+        select: { id: true, name: true, email: true },
+        take: 30,
+      });
+      if (owners.length) {
+        const { analytics } = await import("./analytics");
+        const { emails } = await import("./emails");
+        for (const o of owners) {
+          await db.user.update({ where: { id: o.id }, data: { weeklyReportAt: nowR } });
+          const a = await analytics(o.id);
+          sendMailLater(emails.weeklyReport(o.email, o.name, { winRate: a.roi.winRate, won: a.roi.wonCount, wonValue: a.roi.wonValue, newLeads: a.funnel[0].count, contacted: a.funnel[1].count }, appUrl("/analytics")));
+        }
+      }
+    }
+
+    // Re-check open leads every 30 days so phones, websites and signals stay fresh
+    const stale = await db.lead.findMany({
+      where: { website: { not: null }, enrichStatus: "DONE", enrichedAt: { lt: new Date(Date.now() - 30 * 86400_000) }, status: { in: ["NEW", "CONTACTED", "INTERESTED"] } },
+      select: { id: true },
+      take: 20,
+    });
+    if (stale.length) {
+      await db.lead.updateMany({ where: { id: { in: stale.map((l) => l.id) } }, data: { enrichStatus: "QUEUED" } });
+      const { kickEnrichment } = await import("./enrich");
+      kickEnrichment();
+    }
 
     // 5) Keep every running search importing, even if nobody has the app open
     const owners = await db.job.findMany({

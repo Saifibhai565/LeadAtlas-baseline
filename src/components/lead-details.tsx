@@ -16,10 +16,11 @@ type L = {
   builtBy?: string | null;
   mapsUrl: string | null;
   priceRange?: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   details?: string | null;
   tech?: string | null;
+  id?: string;
 };
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -198,6 +199,21 @@ export function LeadDetailsPanel({ lead }: { lead: L }) {
         </div>
       )}
 
+      {lead.id && (
+        <button
+          onClick={async () => {
+            if (!confirm("Remove this business's personal contact details (emails, phones, owner name, socials)? The record stays so you know not to contact them again. This is for privacy/GDPR requests and can't be undone.")) return;
+            const res = await fetch(`/api/leads/${lead.id}/privacy`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "forget" }) });
+            if (res.ok) {
+              toast.success("Personal details removed and the addresses suppressed.");
+              window.location.reload();
+            } else toast.error("Couldn't do that.");
+          }}
+          className="text-[12px] text-danger hover:underline"
+        >
+          Privacy request: remove personal details
+        </button>
+      )}
       {!lead.details && <p className="text-[12px] text-muted">More Google details (owner profile, menu, bookings, photos, features) are saved for leads from new searches.</p>}
     </div>
   );

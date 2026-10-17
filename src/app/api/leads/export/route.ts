@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import { db } from "@/lib/db";
-import { apiUser, unauthorized } from "@/lib/http";
+import { apiUser, forbidden, unauthorized } from "@/lib/http";
+import { can } from "@/lib/access";
 import { leadWhere } from "../query";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ function social(json: string | null, key: string) {
 export async function GET(req: Request) {
   const user = await apiUser();
   if (!user) return unauthorized();
+  if (!can(user, "export")) return forbidden();
 
   const params = new URL(req.url).searchParams;
   const leads = await db.lead.findMany({

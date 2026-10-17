@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  BarChart3,
+  Binoculars,
+  Zap,
+  CalendarClock,
   Bell,
   BookOpen,
   Building2,
@@ -26,14 +30,20 @@ import {
   Radar,
   Search,
   Send,
+  Sparkles,
+  Store,
+  Wallet,
+  ShoppingCart,
   Settings,
   Shield,
-  Sparkles,
   Users,
   X,
 } from "lucide-react";
 import type { CurrentUser } from "@/lib/auth";
 import { BrandMark, useBrand } from "./brand";
+import { useT } from "./i18n-provider";
+import { Shortcuts } from "./shortcuts";
+import { WelcomeWizard } from "./welcome-wizard";
 import { CommandPalette } from "./command-palette";
 import { SupportWidget } from "./support-widget";
 import { toggleTheme } from "@/lib/theme";
@@ -42,23 +52,32 @@ import { APP_NAME, cn, formatNumber } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/searches", label: "Searches", icon: Search },
+  { href: "/autopilot", label: "AI Autopilot", icon: Sparkles },
+  { href: "/buy-leads", label: "Buy leads", icon: ShoppingCart },
   { href: "/watches", label: "Watches", icon: Radar },
   { href: "/leads", label: "Leads", icon: Building2 },
   { href: "/enrich", label: "Website checks", icon: Globe2 },
   { href: "/rank", label: "Rank tracker", icon: Crosshair },
   { href: "/extract", label: "Web extractor", icon: Sparkles },
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
+  { href: "/automations", label: "Automations", icon: Zap },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/competitors", label: "Competitor watch", icon: Binoculars },
+  { href: "/meeting", label: "Meeting booking", icon: CalendarClock },
   { href: "/inbox", label: "WhatsApp inbox", icon: Inbox },
   { href: "/campaigns", label: "WhatsApp & SMS", icon: MessageCircle },
   { href: "/outreach", label: "Email outreach", icon: Send },
   { href: "/bulk-email", label: "Bulk email", icon: Mails },
+  { href: "/bulk-sms", label: "Bulk SMS", icon: MessageSquareText },
   { href: "/templates", label: "Templates", icon: MessageSquareText },
+  { href: "/marketplace", label: "Template marketplace", icon: Store },
   { href: "/sites", label: "Websites", icon: LayoutTemplate },
 ];
 
 const ACCOUNT = [
   { href: "/team", label: "Team", icon: Users },
   { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/developers", label: "API and extension", icon: Code2 },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/help", label: "Help center", icon: BookOpen },
@@ -193,7 +212,10 @@ function EngineDot() {
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
+const NAV_KEY: Record<string, string> = {"/dashboard": "nav.dashboard", "/searches": "nav.searches", "/watches": "nav.watches", "/leads": "nav.leads", "/enrich": "nav.enrich", "/rank": "nav.rank", "/extract": "nav.extract", "/pipeline": "nav.pipeline", "/inbox": "nav.inbox", "/campaigns": "nav.campaigns", "/outreach": "nav.outreach", "/bulk-email": "nav.bulkEmail", "/bulk-sms": "nav.bulkSms", "/deliverability": "nav.deliverability", "/analytics": "nav.analytics", "/competitors": "nav.competitors", "/templates": "nav.templates", "/sites": "nav.sites", "/team": "nav.team", "/billing": "nav.billing", "/developers": "nav.developers", "/settings": "nav.settings", "/help": "nav.help", "/": "nav.website", "/admin": "nav.admin"};
+
 function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
+  const { t } = useT();
   return (
     <ul className="space-y-0.5">
       {items.map(({ href, label, icon: Icon }) => {
@@ -209,7 +231,7 @@ function NavList({ items, pathname }: { items: NavItem[]; pathname: string }) {
               )}
             >
               <Icon className={cn("h-4 w-4", active && "text-pin")} aria-hidden />
-              {label}
+              {t(NAV_KEY[href], label)}
             </Link>
           </li>
         );
@@ -291,6 +313,7 @@ export function AppShell({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const brand = useBrand();
+  const { t } = useT();
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -309,7 +332,7 @@ export function AppShell({
       <NavList items={visible(NAV)} pathname={pathname} />
 
       <div>
-        <p className="mb-1 px-3 text-[12px] text-muted/80">Account</p>
+        <p className="mb-1 px-3 text-[12px] text-muted/80">{t("nav.account", "Account")}</p>
         <NavList
           items={[...visible(ACCOUNT), ...(user.isAdmin ? [{ href: "/admin", label: "Super Admin", icon: Shield }] : [])]}
           pathname={pathname}
@@ -373,13 +396,15 @@ export function AppShell({
             >
               <Coins className="h-3.5 w-3.5 text-pin" aria-hidden />
               <span className="tabular font-medium">{formatNumber(user.credits)}</span>
-              <span className="text-muted">credits</span>
+              <span className="text-muted">{t("top.credits", "credits")}</span>
             </span>
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1240px] px-4 py-8 sm:px-6">{children}</main>
         <CommandPalette isAdmin={user.isAdmin} />
         {!user.isAdmin && <SupportWidget />}
+        <Shortcuts />
+        {!user.isAdmin && <WelcomeWizard />}
       </div>
     </div>
   );

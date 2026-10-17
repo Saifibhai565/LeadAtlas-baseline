@@ -5,6 +5,7 @@ export const LEAD_STATUSES = ["NEW", "CONTACTED", "INTERESTED", "WON", "LOST"] a
 export function leadWhere(userId: string, params: URLSearchParams, actorId?: string): Prisma.LeadWhereInput {
   const where: Prisma.LeadWhereInput = { userId };
   const and: Prisma.LeadWhereInput[] = [];
+  if (params.get("suggested") !== "1") and.push({ suggested: false });
 
   const q = params.get("q")?.trim();
   if (q) {
@@ -41,6 +42,7 @@ export function leadWhere(userId: string, params: URLSearchParams, actorId?: str
 
   if (params.get("socials") === "1") and.push({ socials: { not: null } });
   if (params.get("optIn") === "1") and.push({ optIn: true });
+  if (params.get("pinned") === "1") and.push({ pinned: true });
   const signal = params.get("signal");
   if (signal && /^[A-Z_]+$/.test(signal)) and.push({ signals: { contains: signal } });
   const tech = params.get("tech")?.trim();

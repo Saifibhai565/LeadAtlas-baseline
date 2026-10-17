@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatNumber } from "@/lib/utils";
+import { useT } from "./i18n-provider";
 
 /** Animated dashboard banner: a radar sweeping a city grid, pins lighting up as leads are found. */
 export function HeroBanner({ name, total, week, hot, due }: { name: string; total: number; week: number; hot: number; due: number }) {
+  const { t } = useT();
   const [shown, setShown] = useState(0);
   useEffect(() => {
     let raf = 0;
@@ -49,32 +51,32 @@ export function HeroBanner({ name, total, week, hot, due }: { name: string; tota
       </div>
 
       <div className="relative px-6 py-8 sm:px-8">
-        <p className="font-mono text-[12px] uppercase tracking-[0.2em] text-pin">Live lead radar</p>
-        <h1 className="mt-2 text-[30px] font-semibold leading-tight tracking-[-0.02em] sm:text-[36px]">Welcome back, {name}</h1>
+        <p className="font-mono text-[12px] uppercase tracking-[0.2em] text-pin">{t("dash.radar", "Live lead radar")}</p>
+        <h1 className="mt-2 text-[30px] font-semibold leading-tight tracking-[-0.02em] sm:text-[36px]">{t("dash.welcome", "Welcome back")}, {name}</h1>
         <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4">
           <div>
             <p className="tabular text-[40px] font-semibold leading-none">{formatNumber(shown)}</p>
-            <p className="mt-1 text-[13px] text-muted">leads on your map</p>
+            <p className="mt-1 text-[13px] text-muted">{t("dash.onMap", "leads on your map")}</p>
           </div>
           <div>
             <p className="tabular text-[40px] font-semibold leading-none text-ok">+{formatNumber(week)}</p>
-            <p className="mt-1 text-[13px] text-muted">this week</p>
+            <p className="mt-1 text-[13px] text-muted">{t("dash.thisWeek", "this week")}</p>
           </div>
           <div>
             <p className="tabular text-[40px] font-semibold leading-none text-pin">{formatNumber(hot)}</p>
-            <p className="mt-1 text-[13px] text-muted">hot leads (70+)</p>
+            <p className="mt-1 text-[13px] text-muted">{t("dash.hot", "hot leads (70+)")}</p>
           </div>
           <div>
             <p className="tabular text-[40px] font-semibold leading-none">{formatNumber(due)}</p>
-            <p className="mt-1 text-[13px] text-muted">follow-ups due</p>
+            <p className="mt-1 text-[13px] text-muted">{t("dash.due", "follow-ups due")}</p>
           </div>
         </div>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link href="/searches" className="glow-btn inline-flex h-10 items-center rounded-control bg-pin px-5 text-sm font-semibold text-pin-ink">
-            Find new leads
+            {t("dash.findNew", "Find new leads")}
           </Link>
           <Link href="/leads?sort=score&status=NEW" className="inline-flex h-10 items-center rounded-control border border-line bg-surface/70 px-5 text-sm backdrop-blur hover:border-pin/50">
-            Contact the best ones
+            {t("dash.contactBest", "Contact the best ones")}
           </Link>
         </div>
       </div>

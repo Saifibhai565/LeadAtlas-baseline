@@ -5,6 +5,7 @@ import { db } from "./db";
 import { appUrl } from "./mail";
 import { notify } from "./notify";
 import { isSuppressed, unsubscribeUrl } from "./outreach";
+import { withinWindow, zoneForAddress } from "./timezone";
 
 /**
  * Sends bulk (pasted-list) emails continuously while there are any, one mailbox at a time,
@@ -53,7 +54,7 @@ async function loop() {
     for (const b of batches) {
       const mb = await db.mailbox.findUnique({ where: { id: b.mailboxId } });
       if (!mb || !mb.active) continue;
-      const next = await db.emailMessage.findFirst({ where: { batchId: b.id, status: "QUEUED" }, orderBy: { createdAt: "asc" } });
+      const next = await db.emailMessage.findFirst({ where: { batchId: b.id, status: "QUEUED" }, orderBy: { createdAt: "asc" }, include: { lead: { select: { address: true } } } });
       if (!next) {
         await db.emailBatch.update({ where: { id: b.id }, data: { status: "DONE" } });
         await notify(b.userId, `Bulk email “${b.name}” finished`, `All ${b.total} emails were processed.`, "/bulk-email");
@@ -63,6 +64,11 @@ async function loop() {
       if (mb.lastSentAt && Date.now() - mb.lastSentAt.getTime() < mb.gapSeconds * 1000) continue;
       const sentToday = await db.emailMessage.count({ where: { mailboxId: mb.id, status: "SENT", sentAt: { gte: dayAgo } } });
       if (sentToday >= mb.dailyLimit) continue;
+      // Respect the mailbox's send-hours window, in the recipient's timezone when known
+      if (mb.sendFromHour !== mb.sendToHour) {
+        const tz = zoneForAddress(next.lead?.address ?? null) ?? mb.sendTz ?? null;
+        if (!withinWindow(mb.sendFromHour, mb.sendToHour, tz)) { waiting = true; continue; }
+      }
 
       const claimed = await db.emailMessage.updateMany({ where: { id: next.id, status: "QUEUED" }, data: { status: "SENDING" } });
       if (claimed.count === 0) continue;
@@ -108,6 +114,15 @@ async function loop() {
             create: { userId: mb.userId, email: next.toEmail, reason: "BOUNCED" },
             update: {},
           });
+          await db.mailbox.update({ where: { id: mb.id }, data: { reputation: { decrement: 2 } } }).catch(() => undefined);
+          // Bounce guardian: too many bounces in a row pauses the mailbox
+          const recent = await db.emailMessage.count({ where: { mailboxId: mb.id, status: { in: ["SENT", "FAILED"] }, createdAt: { gte: new Date(Date.now() - 3600_000) } } });
+          const bounced = await db.emailMessage.count({ where: { mailboxId: mb.id, status: "FAILED", createdAt: { gte: new Date(Date.now() - 3600_000) } } });
+          if (recent >= 20 && bounced / recent > 0.05) {
+            await db.mailbox.update({ where: { id: mb.id }, data: { active: false, lastError: "Paused: too many bounces. Clean the list before sending more." } });
+            await db.emailBatch.updateMany({ where: { mailboxId: mb.id, status: "ACTIVE" }, data: { status: "PAUSED" } });
+            await notify(mb.userId, "Sending paused to protect your domain", "Too many emails bounced. Check your list quality, then resume.", "/bulk-email");
+          }
         }
       }
     }

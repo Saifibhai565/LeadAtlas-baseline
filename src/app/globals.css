@@ -156,3 +156,7 @@ body {
 @keyframes pin-drop { from { transform: translate(-50%, -160%); opacity: 0; } to { transform: translate(-50%, -100%); opacity: 1; } }
 @keyframes ring { from { transform: scale(0.4); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
 @keyframes card-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Urdu / RTL ---------- */
+html[dir="rtl"] body { font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", var(--font-sans, system-ui), sans-serif; }
+html[dir="rtl"] .tabular { font-variant-numeric: tabular-nums; direction: ltr; }

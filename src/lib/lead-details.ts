@@ -2,11 +2,13 @@
  * Everything extra Google Maps gives us about a business, kept together in Lead.details (JSON).
  * Also the shared check that throws away placeholder emails like user@domain.com.
  */
+import { isDisposableEmail } from "./disposable";
+
 const BAD_EMAIL =
   /\.(png|jpe?g|gif|webp|svg|css|js)$|@(example|sentry|wixpress|domain|email|test|yourdomain|company|website)\.|^(name|your|user|email|info@example|test|admin@example|someone|john\.?doe|jane\.?doe)@|@\d+x\./i;
 
 export function cleanEmails(list: string[]) {
-  return Array.from(new Set(list.map((e) => e.trim().toLowerCase()))).filter((e) => e.length < 80 && !BAD_EMAIL.test(e));
+  return Array.from(new Set(list.map((e) => e.trim().toLowerCase()))).filter((e) => e.length < 80 && !BAD_EMAIL.test(e) && !isDisposableEmail(e));
 }
 
 type Row = Record<string, string | undefined>;

@@ -15,6 +15,26 @@ export async function GET() {
   return NextResponse.json({ enabled: AI_ENABLED && user.canUseAI, configured: AI_ENABLED, allowed: user.canUseAI });
 }
 
+/** Finds the link to the next page of a directory (rel=next, or a link whose text is "next" / ">" / a page number after the current). */
+function nextPageUrl(html: string, base: string): URL | null {
+  const rel = html.match(/<link[^>]+rel=["']next["'][^>]+href=["']([^"']+)["']/i)?.[1];
+  const candidates: string[] = [];
+  if (rel) candidates.push(rel);
+  for (const m of html.matchAll(/<a[^>]+href=["']([^"'#]+)["'][^>]*>([\s\S]{0,40}?)<\/a>/gi)) {
+    const text = m[2].replace(/<[^>]+>/g, "").trim().toLowerCase();
+    if (/^(next|next page|older|more|\u203a|\u00bb|>)$/.test(text) || /[?&](page|p|pg|start|offset)=/.test(m[1])) candidates.push(m[1]);
+  }
+  for (const c of candidates) {
+    try {
+      const u = new URL(c, base);
+      if (u.hostname === new URL(base).hostname) return u;
+    } catch {
+      /* skip */
+    }
+  }
+  return null;
+}
+
 const clean = (v: unknown) => {
   const s = typeof v === "string" ? v.trim() : "";
   return s && s.toLowerCase() !== "null" ? s.slice(0, 300) : null;
@@ -32,28 +52,47 @@ export async function POST(req: Request) {
   const instructions = String(body?.instructions ?? "").slice(0, 500);
   const fallbackCategory = clean(body?.category);
   const autoCheck = Boolean(body?.autoCheck);
+  const maxPages = Math.min(10, Math.max(1, Math.round(Number(body?.pages) || 1)));
   if (!url) return fail("Enter a full public web address, like https://example.com/directory.");
 
-  let page;
-  try {
-    page = await fetchPage(url, 20000);
-  } catch {
-    return fail("That page couldn't be opened. Check the address and try again.", 502);
+  // Directory mode: read the page, then follow "next page" links up to maxPages
+  const found: Awaited<ReturnType<typeof extractBusinesses>> = [];
+  const seenUrls = new Set<string>();
+  let current: URL | null = url;
+  let firstPage: Awaited<ReturnType<typeof fetchPage>> = null;
+  for (let i = 0; i < maxPages && current; i++) {
+    if (seenUrls.has(current.toString())) break;
+    seenUrls.add(current.toString());
+    let page;
+    try {
+      page = await fetchPage(current, 20000);
+    } catch {
+      break;
+    }
+    if (!page || page.status >= 400) {
+      if (i === 0) return fail("That page couldn't be opened. Check the address and try again.", 502);
+      break;
+    }
+    if (i === 0) firstPage = page;
+    const text = htmlToText(page.html).slice(0, 60_000);
+    if (text.length < 50) {
+      if (i === 0) return fail("That page has almost no readable text. It may load its content with JavaScript, which the extractor can't read yet.");
+      break;
+    }
+    try {
+      const batch = await extractBusinesses(text, page.url, instructions);
+      for (const b of batch) found.push(b);
+    } catch (err) {
+      if (i === 0) return fail(err instanceof Error ? err.message : "Extraction failed.", 502);
+      break;
+    }
+    if (found.length >= 300) break;
+    // find a "next page" link
+    current = maxPages > 1 ? nextPageUrl(page.html, page.url) : null;
+    if (current) await new Promise((r) => setTimeout(r, 800)); // be polite between pages
   }
-  if (!page) return fail("This website asks automated tools not to read that page (robots.txt), so it was skipped.", 403);
-  if (page.status >= 400) return fail(`That page answered with an error (${page.status}).`, 502);
-
-  const text = htmlToText(page.html).slice(0, 60_000);
-  if (text.length < 50) {
-    return fail("That page has almost no readable text. It may load its content with JavaScript, which the extractor can't read yet.");
-  }
-
-  let found;
-  try {
-    found = await extractBusinesses(text, page.url, instructions);
-  } catch (err) {
-    return fail(err instanceof Error ? err.message : "Extraction failed.", 502);
-  }
+  if (found.length === 0) return fail("No businesses were found on that page.");
+  const page = firstPage!;
 
   const leads = found.slice(0, 300).map((b) => {
     const name = clean(b.name)!;

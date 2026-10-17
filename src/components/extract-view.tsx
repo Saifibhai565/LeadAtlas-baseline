@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { KeyRound, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Hint, Input, Label, Textarea, Toggle } from "@/components/ui/field";
+import { Hint, Input, Label, Textarea, Toggle, Select } from "@/components/ui/field";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { formatNumber } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export function ExtractView() {
   const [instructions, setInstructions] = useState("");
   const [category, setCategory] = useState("");
   const [autoCheck, setAutoCheck] = useState(true);
+  const [pages, setPages] = useState("1");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
@@ -44,7 +45,7 @@ export function ExtractView() {
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, instructions, category, autoCheck }),
+        body: JSON.stringify({ url, instructions, category, autoCheck, pages: Number(pages) }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) return void toast.error(body.error ?? "Extraction failed.");
@@ -108,6 +109,16 @@ export function ExtractView() {
               required
             />
             <Hint>Public pages only. Pages that ask bots to stay away are skipped.</Hint>
+          </div>
+          <div>
+            <Label htmlFor="pages">Follow next-page links</Label>
+            <Select id="pages" value={pages} onChange={(e) => setPages(e.target.value)}>
+              <option value="1">This page only</option>
+              <option value="3">Up to 3 pages</option>
+              <option value="5">Up to 5 pages</option>
+              <option value="10">Up to 10 pages</option>
+            </Select>
+            <Hint>For directories with page 1, 2, 3… the extractor follows the “next” link. 1 credit per new business.</Hint>
           </div>
           <div>
             <Label htmlFor="instructions">What to look for (optional)</Label>

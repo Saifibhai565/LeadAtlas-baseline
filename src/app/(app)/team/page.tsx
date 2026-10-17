@@ -6,7 +6,8 @@ export const metadata = { title: "Team" };
 export default function TeamPage() {
   return (
     <>
-      <PageTitle title="Team" description="Work on the same leads together." />
+      <PageTitle tkey="page.team"
+        title="Team" description="Work on the same leads together." />
       <TeamView />
     </>
   );

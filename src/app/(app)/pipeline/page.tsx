@@ -6,7 +6,8 @@ export const metadata = { title: "Pipeline" };
 export default function PipelinePage() {
   return (
     <>
-      <PageTitle title="Pipeline" description="Every lead you're working, by stage. Open a card to message them, add notes or set a follow-up." />
+      <PageTitle tkey="page.pipeline"
+        title="Pipeline" description="Every lead you're working, by stage. Open a card to message them, add notes or set a follow-up." />
       <PipelineBoard />
     </>
   );

@@ -14,6 +14,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [loading, setLoading] = useState(false);
   const isLogin = mode === "login";
   const brand = useBrand();
+  const [need2fa, setNeed2fa] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -27,6 +28,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         body: JSON.stringify(data),
       });
       const body = await res.json().catch(() => ({}));
+      if (body?.need2fa) {
+        setNeed2fa(true);
+        return;
+      }
       if (!res.ok) {
         setError(body.error ?? "Something went wrong. Try again.");
         return;
@@ -108,7 +113,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </p>
         )}
 
-        <Button type="submit" loading={loading} className="w-full">
+        {isLogin && need2fa && (
+        <div>
+          <Label htmlFor="code">Authenticator code</Label>
+          <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" autoFocus className="font-mono" />
+          <p className="mt-1 text-[12px] text-muted">Enter the 6-digit code from your authenticator app, or a backup code.</p>
+        </div>
+      )}
+      <Button type="submit" loading={loading} className="w-full">
           {isLogin ? "Sign in" : "Create account"}
         </Button>
       </form>

@@ -4,7 +4,9 @@ import { kickEnrichment } from "@/lib/enrich";
 import { STATUS_LABEL } from "@/lib/leads";
 import { emit } from "@/lib/webhooks";
 import { scheduleLearning } from "@/lib/learn";
+import { runAutomations } from "@/lib/automation";
 import { cleanTag, parseTags, storeTags } from "@/lib/tags";
+import { can } from "@/lib/access";
 import { apiUser, fail, unauthorized } from "@/lib/http";
 import { LEAD_STATUSES } from "../query";
 
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
     });
     for (const l of owned) emit(user.wsId, "lead.status_changed", { id: l.id, to: status }).catch(() => undefined);
     if (status === "WON" || status === "LOST") scheduleLearning(user.wsId);
+    for (const l of owned) runAutomations(user.wsId, user.id, l.id, status).catch(() => undefined);
     return NextResponse.json({ updated: r.count });
   }
 
@@ -56,6 +59,7 @@ export async function POST(req: Request) {
   }
 
   if (body?.action === "delete") {
+    if (!can(user, "delete_leads")) return fail("Only owners and managers can delete leads.", 403);
     const r = await db.lead.deleteMany({ where: { id: { in: ids }, userId: user.wsId } });
     return NextResponse.json({ deleted: r.count });
   }

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Hint, Input, Label, Select, Textarea, Toggle } from "@/components/ui/field";
 import { Badge, Panel } from "@/components/ui/panel";
 import { toggleTheme } from "@/lib/theme";
+import { setLanguage, useT } from "./i18n-provider";
+import { TwoFactorPanel } from "./two-factor";
 
 type Me = { name: string; email: string; businessName: string | null; offer: string | null; signature: string | null; emailAlerts?: boolean };
 
@@ -96,8 +98,11 @@ export function SettingsView() {
     </Panel>
     <BrandingPanel />
     <SheetsPanel />
+    <HubspotPanel />
     <InstagramPanel />
     <SmsPanel />
+    <SecurityPanel />
+    <LanguagePanel />
     <AppearancePanel />
     <PasswordPanel />
     <DataPanel />
@@ -511,6 +516,121 @@ function SmsPanel() {
         >
           Send test
         </Button>
+      </div>
+    </Panel>
+  );
+}
+
+function HubspotPanel() {
+  const [st, setSt] = useState<{ connected: boolean; isOwner: boolean } | null>(null);
+  const [token, setToken] = useState("");
+  const load = () =>
+    fetch("/api/integrations/hubspot")
+      .then((r) => r.json())
+      .then(setSt);
+  useEffect(() => {
+    load();
+  }, []);
+  if (!st?.isOwner) return null;
+  return (
+    <Panel className="space-y-3 p-6">
+      <div>
+        <h2 className="text-[15px] font-semibold">HubSpot CRM</h2>
+        <p className="mt-1 text-sm text-muted">
+          Send leads to HubSpot as companies and contacts (select leads, then “To HubSpot”). In HubSpot: Settings, Integrations, Private apps, create one with
+          companies and contacts read/write, and paste its token here. For Zoho, Pipedrive and others, use webhooks with Zapier or Make (API and extension page).
+        </p>
+      </div>
+      {st.connected ? (
+        <div className="flex items-center gap-3 text-sm">
+          <Badge tone="ok">Connected</Badge>
+          <button
+            onClick={async () => {
+              await fetch("/api/integrations/hubspot", { method: "DELETE" });
+              load();
+            }}
+            className="text-[13px] text-danger hover:underline"
+          >
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="pat-na1-…" autoComplete="off" />
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              const res = await fetch("/api/integrations/hubspot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+              const b = await res.json().catch(() => ({}));
+              if (!res.ok) return toast.error(b.error ?? "Couldn't connect.");
+              toast.success("HubSpot connected.");
+              setToken("");
+              load();
+            }}
+          >
+            Connect
+          </Button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function SecurityPanel() {
+  const [s, setS] = useState<{ ipAllow: string; isOwner: boolean } | null>(null);
+  useEffect(() => {
+    fetch("/api/account/security")
+      .then((r) => r.json())
+      .then(setS);
+  }, []);
+  return (
+    <>
+      <TwoFactorPanel />
+      {s?.isOwner && (
+        <Panel className="space-y-3 p-6">
+          <div>
+            <h2 className="text-[15px] font-semibold">Allowed networks (optional)</h2>
+            <p className="mt-1 text-sm text-muted">
+              Restrict sign-in to certain IP addresses, like your office or VPN. One per line. A prefix like <span className="font-mono">203.0.113.</span> allows a whole
+              range. Leave empty to allow everywhere. Be careful: a wrong value can lock you out.
+            </p>
+          </div>
+          <Textarea rows={3} value={s.ipAllow} onChange={(e) => setS({ ...s, ipAllow: e.target.value })} placeholder={"203.0.113.45\n41.90."} className="font-mono text-[13px]" />
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              const res = await fetch("/api/account/security", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ipAllow: s.ipAllow }) });
+              const b = await res.json().catch(() => ({}));
+              if (res.ok) toast.success("Saved.");
+              else toast.error(b.error ?? "Couldn't save.");
+            }}
+          >
+            Save networks
+          </Button>
+        </Panel>
+      )}
+    </>
+  );
+}
+
+function LanguagePanel() {
+  const { lang, t } = useT();
+  return (
+    <Panel className="space-y-3 p-6">
+      <div>
+        <h2 className="text-[15px] font-semibold">{t("set.language", "Language")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("set.languageHint", "Choose the language for the app.")}</p>
+      </div>
+      <div className="flex gap-2">
+        {(["en", "ur"] as const).map((l) => (
+          <button
+            key={l}
+            onClick={() => lang !== l && setLanguage(l)}
+            className={`rounded-control border px-4 py-2 text-sm ${lang === l ? "border-pin bg-pin/10 font-medium" : "border-line hover:border-muted/50"}`}
+          >
+            {l === "en" ? t("set.english", "English") : t("set.urdu", "اردو")}
+          </button>
+        ))}
       </div>
     </Panel>
   );

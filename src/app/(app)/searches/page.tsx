@@ -7,6 +7,7 @@ export default function SearchesPage() {
   return (
     <>
       <PageTitle
+        tkey="page.searches"
         title="Searches"
         description="Search Google Maps for businesses. New ones are saved to your leads, and each new lead uses 1 credit."
       />

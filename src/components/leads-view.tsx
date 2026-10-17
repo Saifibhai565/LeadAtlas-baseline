@@ -30,6 +30,7 @@ import { EnrollControls } from "./enroll-controls";
 import { SocialLinks } from "./social-links";
 import { useFeatures } from "./use-features";
 import { SIGNAL_INFO } from "@/lib/signals";
+import { useT } from "./i18n-provider";
 import { ImportLeads } from "./import-leads";
 import { LeadDrawer } from "./lead-drawer";
 import { ISSUE_INFO, issueList, scoreTone } from "@/lib/issues";
@@ -63,6 +64,8 @@ type Lead = {
   aiMessage: string | null;
   tags: string | null;
   signals: string | null;
+  quality: number | null;
+  pinned: boolean;
 };
 
 type Filters = {
@@ -83,6 +86,7 @@ type Filters = {
   mine: boolean;
   unhappy: boolean;
   tag: string;
+  pinned: boolean;
   signal: string;
   tech: string;
 };
@@ -107,6 +111,7 @@ const EMPTY: Filters = {
   mine: false,
   unhappy: false,
   tag: "",
+  pinned: false,
   signal: "",
   tech: "",
 };
@@ -147,6 +152,7 @@ function filtersFromQuery(s: URLSearchParams): Filters {
     mine: s.get("assigned") === "me",
     unhappy: s.get("unhappy") === "1",
     tag: s.get("tag") ?? "",
+    pinned: s.get("pinned") === "1",
     signal: s.get("signal") ?? "",
     tech: s.get("tech") ?? "",
   };
@@ -171,6 +177,7 @@ function filtersToQuery(f: Filters, q: string) {
   if (f.mine) s.set("assigned", "me");
   if (f.unhappy) s.set("unhappy", "1");
   if (f.tag) s.set("tag", f.tag);
+  if (f.pinned) s.set("pinned", "1");
   if (f.signal) s.set("signal", f.signal);
   if (f.tech) s.set("tech", f.tech);
   return s;
@@ -201,6 +208,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 export function LeadsView() {
+  const { t } = useT();
   const router = useRouter();
   const params = useSearchParams();
   const jobId = params.get("jobId");
@@ -535,7 +543,7 @@ export function LeadsView() {
               <Input
                 value={filters.q}
                 onChange={(e) => set("q", e.target.value)}
-                placeholder="Search name, address, phone, email…"
+                placeholder={t("leads.searchPh","Search name, address, phone, email…")}
                 className="pl-9"
                 aria-label="Search leads"
               />
@@ -546,7 +554,7 @@ export function LeadsView() {
               className="w-auto max-w-[220px]"
               aria-label="Category"
             >
-              <option value="">All categories</option>
+              <option value="">{t("leads.allCategories","All categories")}</option>
               {categories.map((c) => (
                 <option key={c.name} value={c.name}>
                   {c.name} ({c.count})
@@ -554,11 +562,11 @@ export function LeadsView() {
               ))}
             </Select>
             <Select value={filters.sort} onChange={(e) => set("sort", e.target.value)} className="w-auto" aria-label="Sort">
-              <option value="">Newest first</option>
+              <option value="">{t("leads.newestFirst","Newest first")}</option>
               <option value="score">Best leads first</option>
             </Select>
             <Select value={filters.status} onChange={(e) => set("status", e.target.value)} className="w-auto" aria-label="Status">
-              <option value="">Any status</option>
+              <option value="">{t("leads.anyStatus","Any status")}</option>
               {STATUSES.map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
@@ -566,13 +574,13 @@ export function LeadsView() {
               ))}
             </Select>
             <Select value={filters.minRating} onChange={(e) => set("minRating", e.target.value)} className="w-auto" aria-label="Rating">
-              <option value="">Any rating</option>
+              <option value="">{t("leads.anyRating","Any rating")}</option>
               <option value="3">3.0 and up</option>
               <option value="4">4.0 and up</option>
               <option value="4.5">4.5 and up</option>
             </Select>
             <Select value={filters.minReviews} onChange={(e) => set("minReviews", e.target.value)} className="w-auto" aria-label="Reviews">
-              <option value="">Any reviews</option>
+              <option value="">{t("leads.anyReviews","Any reviews")}</option>
               <option value="10">10+ reviews</option>
               <option value="50">50+ reviews</option>
               <option value="200">200+ reviews</option>
@@ -640,6 +648,9 @@ export function LeadsView() {
             <FilterChip active={filters.followUp} onClick={() => set("followUp", !filters.followUp)}>
               Follow-up due
             </FilterChip>
+            <FilterChip active={filters.pinned} onClick={() => set("pinned", !filters.pinned)}>
+              ★ Starred
+            </FilterChip>
             <FilterChip active={filters.socials} onClick={() => set("socials", !filters.socials)}>
               Has social pages
             </FilterChip>
@@ -704,6 +715,20 @@ export function LeadsView() {
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 Add
               </button>
+              <button
+                onClick={async () => {
+                  if (!confirm("Merge duplicates? Leads with the same phone or website are combined into one, keeping all notes and history.")) return;
+                  const res = await fetch("/api/leads/merge", { method: "POST" });
+                  const b = await res.json().catch(() => ({}));
+                  if (!res.ok) return toast.error("Couldn't merge.");
+                  toast.success(b.merged ? `Merged ${b.merged} duplicate${b.merged > 1 ? "s" : ""}.` : "No duplicates found.");
+                  setRefreshKey((k) => k + 1);
+                }}
+                className="inline-flex h-8 items-center rounded-control border border-line bg-raised px-3 text-[13px] hover:border-muted/50"
+                title="Combine the same business saved more than once"
+              >
+                {t("leads.mergeDupes","Merge duplicates")}
+              </button>
               <a
                 href={`/api/leads/export?${query}`}
                 download
@@ -753,6 +778,19 @@ export function LeadsView() {
                 </Button>
               </span>
             )}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                const res = await fetch("/api/leads/hubspot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: Array.from(selected) }) });
+                const b = await res.json().catch(() => ({}));
+                if (!res.ok) return toast.error(b.error ?? "Couldn't send to HubSpot.");
+                if (b.error && !b.ok) return toast.error(b.error);
+                toast.success(`Sent ${b.ok} to HubSpot${b.failed ? `, ${b.failed} failed` : ""}.`);
+              }}
+            >
+              To HubSpot
+            </Button>
             <span className="inline-flex items-center gap-1">
               <Input
                 value={bulkTag}
@@ -812,11 +850,11 @@ export function LeadsView() {
                         className="accent-[rgb(var(--pin))]"
                       />
                     </th>
-                    <th className="px-2 py-3 font-medium">Business</th>
-                    <th className="px-4 py-3 font-medium">Contact</th>
-                    <th className="px-4 py-3 font-medium">Rating</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 text-right font-medium">Reach out</th>
+                    <th className="px-2 py-3 font-medium">{t("leads.business","Business")}</th>
+                    <th className="px-4 py-3 font-medium">{t("leads.contact","Contact")}</th>
+                    <th className="px-4 py-3 font-medium">{t("leads.rating","Rating")}</th>
+                    <th className="px-4 py-3 font-medium">{t("leads.status","Status")}</th>
+                    <th className="px-4 py-3 text-right font-medium">{t("leads.reachOut","Reach out")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -844,6 +882,18 @@ export function LeadsView() {
                         </td>
                         <td className="max-w-[340px] px-2 py-3">
                           <p className="font-medium">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await fetch(`/api/leads/${l.id}/pin`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pinned: !l.pinned }) });
+                                setRefreshKey((k) => k + 1);
+                              }}
+                              className={cn("mr-1.5 align-middle", l.pinned ? "text-pin" : "text-muted/40 hover:text-muted")}
+                              title={l.pinned ? "Unstar" : "Star this lead"}
+                              aria-label={l.pinned ? "Unstar" : "Star"}
+                            >
+                              {l.pinned ? "\u2605" : "\u2606"}
+                            </button>
                             <button onClick={() => setOpenId(l.id)} className="text-left hover:text-pin hover:underline">
                               {l.title}
                             </button>
@@ -905,7 +955,7 @@ export function LeadsView() {
                               <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
                             </a>
                           ) : (
-                            <p className="text-[13px] text-pin">No website</p>
+                            <p className="text-[13px] text-pin">{t("leads.noWebsite","No website")}</p>
                           )}
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             {["QUEUED", "RUNNING"].includes(l.enrichStatus) && (
@@ -937,6 +987,11 @@ export function LeadsView() {
                               </Badge>
                             )}
                             {l.socials && <SocialLinks json={l.socials} />}
+                            {l.quality != null && (
+                              <Badge tone={l.quality >= 70 ? "ok" : l.quality >= 40 ? "pin" : "danger"} title="How reliable the contact details are">
+                                Q {l.quality}
+                              </Badge>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3">

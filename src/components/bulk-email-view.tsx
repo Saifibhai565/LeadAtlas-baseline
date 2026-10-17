@@ -9,7 +9,7 @@ import { Hint, Input, Label, Select, Textarea, Toggle } from "@/components/ui/fi
 import { Badge, Panel, PanelHeader } from "@/components/ui/panel";
 import { formatNumber, timeAgo } from "@/lib/utils";
 
-type Mailbox = { id: string; label: string; fromName: string; fromEmail: string; replyTo: string | null; platform: boolean; active: boolean; lastError: string | null; dailyLimit: number; gapSeconds: number; sentToday: number };
+type Mailbox = { id: string; label: string; fromName: string; fromEmail: string; replyTo: string | null; platform: boolean; active: boolean; lastError: string | null; dailyLimit: number; gapSeconds: number; sendFromHour: number; sendToHour: number; sentToday: number };
 type Batch = { id: string; name: string; subject: string; status: string; total: number; sent: number; failed: number; skipped: number; queued: number; createdAt: string; mailboxId: string };
 type Data = { mailboxes: Mailbox[]; batches: Batch[]; allowed: boolean; platform: { domains: string[]; defaultFrom: string; dailyLimit: number } | null };
 
@@ -245,6 +245,30 @@ export function BulkEmailView({ isAdmin }: { isAdmin: boolean }) {
                     className="tabular h-8 w-20 text-[13px]"
                   />
                   sec
+                </label>
+                <label className="flex items-center gap-1.5 text-[13px] text-muted">
+                  Only send
+                  <Select
+                    defaultValue={m.sendFromHour === m.sendToHour ? "any" : `${m.sendFromHour}-${m.sendToHour}`}
+                    key={`w${m.sendFromHour}-${m.sendToHour}`}
+                    onChange={async (e) => {
+                      const v = e.target.value;
+                      const [from, to] = v === "any" ? [0, 0] : v.split("-").map(Number);
+                      if (await call(`/api/bulk-email/mailbox/${m.id}`, { method: "PATCH", body: JSON.stringify({ sendFromHour: from, sendToHour: to }) })) {
+                        toast.success("Send hours saved.");
+                        load();
+                      }
+                    }}
+                    className="h-8 w-auto text-[13px]"
+                    aria-label="Send hours"
+                  >
+                    <option value="any">any time</option>
+                    <option value="8-20">8am to 8pm</option>
+                    <option value="9-18">9am to 6pm (business hours)</option>
+                    <option value="9-12">morning (9am-12pm)</option>
+                    <option value="13-17">afternoon (1pm-5pm)</option>
+                  </Select>
+                  <span className="text-[12px]">(recipient local time)</span>
                 </label>
               </li>
             );

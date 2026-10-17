@@ -6,6 +6,7 @@ import { kickEnrichment } from "./enrich";
 import { scoreLead } from "./score";
 import { notify } from "./notify";
 import { cleanEmails, mapsDetails } from "./lead-details";
+import { saveToPool } from "./pool";
 import { recomputeSignals } from "./signals-server";
 import { emails } from "./emails";
 import { appUrl, sendMailLater } from "./mail";
@@ -66,7 +67,7 @@ function reviewsFrom(row: Row) {
   return out;
 }
 
-function toLead(row: Row) {
+export function toLead(row: Row) {
   const title = text(row.title);
   if (!title) return null;
   const placeKey =
@@ -105,7 +106,7 @@ function toLead(row: Row) {
 // Serialises imports per job inside this server process, so overlapping polls never insert twice.
 const locks = new Map<string, Promise<void>>();
 const lastPartial = new Map<string, number>();
-const PARTIAL_EVERY_MS = 6000;
+const PARTIAL_EVERY_MS = 3000;
 
 function withLock(jobId: string, fn: () => Promise<void>) {
   const prev = locks.get(jobId) ?? Promise.resolve();
@@ -137,6 +138,8 @@ async function importRows(jobId: string, engineJobId: string, userId: string, fi
     select: { id: true, placeKey: true, title: true, rating: true, reviewCount: true, lowReviews: true },
   });
   const known = new Set(existing.map((l) => l.placeKey));
+  // Keep the shared pool up to date with everything this search found (public data only)
+  saveToPool(incoming).catch(() => undefined);
 
   // Leads we already had: refresh their numbers and spot changes worth acting on
   const incomingByKey = new Map(incoming.map((l) => [l.placeKey, l]));

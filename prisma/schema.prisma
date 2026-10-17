@@ -13,6 +13,29 @@ model User {
   email        String   @unique
   passwordHash String
   role         String   @default("USER") // USER | ADMIN (ADMIN = you, the platform owner)
+  teamRole     String   @default("MEMBER") // OWNER | MANAGER | MEMBER (within a workspace)
+  totpSecret   String? // base32, encrypted — set once 2FA is on
+  totpEnabled  Boolean  @default(false)
+  totpBackup   String? // JSON of one-time backup codes (hashed)
+  ipAllow      String? // comma list of allowed IPs/prefixes for this workspace (set by the owner)
+  // Meeting booking (Phase 34)
+  meetingSlug     String?   @unique
+  meetingTitle    String?
+  meetingMinutes  Int       @default(30)
+  meetingDays     String?   // JSON: which weekdays + hours are open, e.g. {"mon":[9,17],...}
+  meetingTz       String    @default("Asia/Karachi")
+  weeklyReport    Boolean   @default(false) // email me the analytics report every Monday
+  weeklyReportAt  DateTime?
+  onboardedAt     DateTime? // dismissed the welcome wizard
+  // AI Autopilot (Phase 38)
+  autopilot       Boolean   @default(false)
+  autopilotWhat   String? // what they sell / who they target, in their words
+  autopilotCities String? // comma list of cities
+  autopilotDaily  Int       @default(20) // how many new leads a day to find
+  autopilotAutoAdd Boolean  @default(false) // add straight away (spend credits) vs. suggest first
+  autopilotRunAt  DateTime?
+  walletBalance   Int       @default(0) // deposit balance for buying leads (minor units of walletCurrency)
+  walletCurrency  String    @default("USD")
   blocked      Boolean  @default(false)
 
   // Email (Phase 10)
@@ -32,6 +55,7 @@ model User {
   // Instagram (official Graph API) and SMS provider settings, per workspace
   igUserId   String?
   igTokenEnc String?
+  hubspotTokenEnc String? // HubSpot private app token for sending leads to the CRM
   smsUrl     String? // e.g. https://provider/api?key=XXX&to={to}&text={message}
   smsMethod  String? // GET | POST
   smsBody    String? // body template for POST, with {to} and {message}
@@ -196,6 +220,15 @@ model Lead {
 
   // Review services (Phase 18)
   details        String? // JSON: Google owner, menu, bookings, photos, features, address parts, IDs
+  intel          String? // JSON: deep check (domain age, SSL, speed, safety, contact form, hiring, owner email, traffic, company data...)
+  quality        Int? // 0-100 how reliable the contact details are
+  intelAt        DateTime?
+  mergedInto     String?
+  dossier        String? // JSON one-page research summary
+  dossierAt      DateTime?
+  pinned         Boolean  @default(false) // starred by the user
+  suggested      Boolean  @default(false) // found by autopilot, waiting for the user to accept (no credit spent yet)
+  foundBy        String? // AUTOPILOT | null
   seo            String? // JSON SEO audit of the homepage
   ecom           String? // JSON online-store audit
   reviewToken    String? @unique
@@ -419,6 +452,16 @@ model Mailbox {
   trackOpens  Boolean  @default(false)
   platform    Boolean  @default(false) // sends through the platform's shared server (Super Admin settings)
   replyTo     String? // replies go here
+  warmup       Boolean  @default(false) // taking part in the warmup network
+  warmupStage  Int      @default(0) // ramps the daily cap up over the first weeks
+  reputation   Int      @default(100) // 0-100, drops on bounces/complaints
+  dnsCheckedAt DateTime?
+  dnsSpf       Boolean?
+  dnsDkim      Boolean?
+  dnsDmarc     Boolean?
+  sendFromHour Int      @default(0) // only send bulk/sequence between these local hours (0-23); 0/0 = any time
+  sendToHour   Int      @default(0)
+  sendTz       String? // IANA zone for the window, e.g. "Asia/Karachi"
   active      Boolean  @default(true)
   lastError   String?
   lastSentAt  DateTime?
@@ -605,6 +648,7 @@ model SmsMessage {
   toNumber  String
   body      String
   status    String    @default("QUEUED") // QUEUED | SENT | FAILED
+  batchId   String?
   error     String?
   createdAt DateTime  @default(now())
   sentAt    DateTime?
@@ -741,4 +785,191 @@ model EmailBatch {
 
   @@index([userId, createdAt])
   @@index([status])
+}
+
+// ---------- Shared data pool (public business data reused across searches) ----------
+model PlaceCache {
+  placeKey  String   @id
+  title     String
+  category  String?
+  address   String?
+  data      String // JSON of public business fields
+  hits      Int      @default(0) // times reused for a search
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([updatedAt])
+}
+
+// ---------- Email deliverability (Phase 25) ----------
+model WarmupEmail {
+  id         String   @id @default(cuid())
+  fromId     String // sending mailbox
+  toId       String // receiving mailbox
+  subject    String
+  status     String   @default("SENT") // SENT | DELIVERED | FAILED
+  replied    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([toId, createdAt])
+  @@index([fromId, createdAt])
+}
+
+model DeliverabilityCheck {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  mailboxId String?
+  kind      String // DNS | PLACEMENT | BLACKLIST
+  result    String // JSON
+  score     Int? // 0-100 where it makes sense
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ---------- Competitor watch (Phase 28) ----------
+model CompetitorWatch {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  url        String
+  lastHash   String?
+  lastText   String?
+  lastChange String?
+  everyDays  Int       @default(7)
+  nextRunAt  DateTime  @default(now())
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  @@index([active, nextRunAt])
+  @@index([userId, createdAt])
+}
+
+// ---------- Bulk SMS (pasted lists) ----------
+model SmsBatch {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  body      String
+  total     Int
+  status    String   @default("ACTIVE") // ACTIVE | PAUSED | DONE | CANCELLED
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+// ---------- Meeting bookings (Phase 34) ----------
+model Booking {
+  id        String   @id @default(cuid())
+  userId    String // workspace (who the meeting is with)
+  leadId    String?
+  name      String
+  email     String?
+  phone     String?
+  startsAt  DateTime
+  minutes   Int      @default(30)
+  note      String?
+  status    String   @default("CONFIRMED") // CONFIRMED | CANCELLED
+  createdAt DateTime @default(now())
+
+  @@index([userId, startsAt])
+}
+
+// ---------- Pipeline automation (Phase 35) ----------
+// When a lead moves to a stage, run simple actions automatically.
+model Automation {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  name      String
+  trigger   String // status:NEW | status:CONTACTED | status:INTERESTED | status:WON | status:LOST
+  action    String // tag | followup | sequence | assign | note
+  value     String // tag text, days, sequenceId, memberId, or note text
+  active    Boolean  @default(true)
+  runs      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, trigger])
+}
+
+// ---------- Template marketplace (Phase 37) ----------
+model MarketTemplate {
+  id          String   @id @default(cuid())
+  authorId    String? // null = made by the platform (Super Admin)
+  authorName  String // shown as "by …"
+  official    Boolean  @default(false) // platform template, always featured
+  approved    Boolean  @default(false) // Super Admin approved a user submission
+  name        String
+  category    String // e.g. Web design, SEO, Social media, General
+  channel     String // WHATSAPP | EMAIL | SMS | SEQUENCE
+  language    String   @default("english") // english | urdu | roman_urdu
+  subject     String?
+  body        String // single message, or JSON steps for a SEQUENCE
+  uses        Int      @default(0) // how many times someone added it
+  createdAt   DateTime @default(now())
+
+  @@index([approved, official, uses])
+}
+
+// ---------- Admin global scraper + data bank (Phase 39) ----------
+// The platform owner runs big background scrapes; results go into PlaceCache (the shared data bank).
+model ScrapeTask {
+  id          String    @id @default(cuid())
+  keyword     String // e.g. "restaurant in New York"
+  country     String? // tag for grouping, e.g. "USA"
+  status      String    @default("QUEUED") // QUEUED | RUNNING | DONE | FAILED | PAUSED
+  engineJobId String?
+  found       Int       @default(0) // rows this task added to the bank
+  depth       Int       @default(5)
+  lang        String    @default("en")
+  lat         Float?
+  lng         Float?
+  priority    Int       @default(0)
+  parentId    String? // if this was auto-expanded from a bigger task
+  createdAt   DateTime  @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  @@index([status, priority])
+  @@index([country, createdAt])
+}
+
+// ---------- Wallet, deposits & lead purchases (Phase 40) ----------
+model Deposit {
+  id         String    @id @default(cuid())
+  userId     String // workspace
+  amount     Int // in walletCurrency minor units shown as whole (e.g. 50 = $50)
+  currency   String    @default("USD")
+  method     String // USDT_TRC20 | USDT_BEP20 | BANK | OTHER
+  reference  String // tx hash or bank reference
+  status     String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  adminNote  String?
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model WalletTxn {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  delta     Int // + for deposits, - for purchases
+  balance   Int // balance after this txn
+  reason    String // deposit | purchase | refund | admin
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model LeadPurchase {
+  id        String   @id @default(cuid())
+  userId    String // workspace
+  query     String // what they bought, e.g. "restaurant in New York"
+  count     Int // how many leads delivered
+  price     Int // charged from wallet
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

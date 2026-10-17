@@ -2,6 +2,7 @@ import "server-only";
 import { promises as dns } from "node:dns";
 import { db } from "./db";
 import { recomputeLeadSignals } from "./signals-server";
+import { runFreeIntel } from "./lead-intel";
 import { refreshInstagram } from "./instagram";
 import { cleanEmails } from "./lead-details";
 import { fetchPage, normalizeUrl, type Page } from "./web";
@@ -350,6 +351,7 @@ export function kickEnrichment() {
         await checkLead(next.id);
         await refreshInstagram(next.id).catch(() => undefined);
         await recomputeLeadSignals(next.id);
+        await runFreeIntel(next.id, { speed: false }).catch(() => undefined); // speed test runs on request (it takes up to a minute)
       } catch {
         await db.lead.update({ where: { id: next.id }, data: { enrichStatus: "FAILED", enrichedAt: new Date() } }).catch(() => undefined);
       }

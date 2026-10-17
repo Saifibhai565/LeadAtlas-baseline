@@ -32,6 +32,8 @@ export async function GET() {
       lastError: m.lastError,
       dailyLimit: m.dailyLimit,
       gapSeconds: m.gapSeconds,
+      sendFromHour: m.sendFromHour,
+      sendToHour: m.sendToHour,
       sentToday: await db.emailMessage.count({ where: { mailboxId: m.id, status: "SENT", sentAt: { gte: dayAgo } } }),
     })),
   );

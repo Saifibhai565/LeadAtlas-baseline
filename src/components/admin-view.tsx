@@ -8,7 +8,7 @@ import { Hint, Input, Label, Select, Textarea, Toggle } from "@/components/ui/fi
 import { Badge, Panel, PanelHeader } from "@/components/ui/panel";
 import { cn, formatNumber, timeAgo } from "@/lib/utils";
 
-const TABS = ["Overview", "Payments", "Support", "Users", "Leads", "Plans", "Payment methods", "Features", "Coupons", "Website", "Activity log", "Errors", "System", "Settings"] as const;
+const TABS = ["Overview", "Payments", "Deposits", "Support", "Users", "Leads", "Plans", "Payment methods", "Features", "Coupons", "Website", "Integrations", "Data pool", "Data bank", "Marketplace", "Activity log", "Errors", "System", "Settings"] as const;
 type Tab = (typeof TABS)[number];
 
 async function api<T>(url: string, init?: RequestInit): Promise<T | null> {
@@ -1466,6 +1466,406 @@ function WebsiteSettings() {
   );
 }
 
+// ---------- Deposits (wallet top-ups) ----------
+type Dep = { id: string; amount: number; currency: string; method: string; reference: string; status: string; createdAt: string; user: { name: string; email: string } | null };
+
+function Deposits() {
+  const [show, setShow] = useState("PENDING");
+  const [rows, setRows] = useState<Dep[] | null>(null);
+  const load = useCallback(() => api<{ deposits: Dep[] }>(`/api/admin/deposits?show=${show}`).then((b) => setRows(b?.deposits ?? [])), [show]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  return (
+    <Panel>
+      <PanelHeader
+        title="Deposits"
+        description="Confirm wallet top-ups after you see the money. Crypto hashes link to the blockchain."
+        action={
+          <Select value={show} onChange={(e) => setShow(e.target.value)} className="h-8 w-auto text-[13px]">
+            <option value="PENDING">Waiting</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="ALL">All</option>
+          </Select>
+        }
+      />
+      {rows?.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">Nothing here.</p>}
+      <ul className="divide-y divide-line">
+        {rows?.map((d) => (
+          <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
+            <div className="min-w-0">
+              <p className="font-medium">
+                {d.currency} {formatNumber(d.amount)} <span className="font-normal text-muted">· {d.user?.name ?? "?"} ({d.user?.email})</span>
+              </p>
+              <p className="text-[12px] text-muted">
+                {d.method} · <span className="break-all font-mono">{d.reference}</span>
+              </p>
+            </div>
+            {d.status === "PENDING" ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={async () => (await api(`/api/admin/deposits/${d.id}`, { method: "POST", body: JSON.stringify({ action: "approve" }) })) && load()}>
+                  Approve
+                </Button>
+                <Button size="sm" variant="ghost" onClick={async () => (await api(`/api/admin/deposits/${d.id}`, { method: "POST", body: JSON.stringify({ action: "reject" }) })) && load()}>
+                  Reject
+                </Button>
+              </div>
+            ) : (
+              <Badge tone={d.status === "APPROVED" ? "ok" : "danger"}>{d.status.toLowerCase()}</Badge>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+// ---------- Data bank (global scraper) ----------
+type Task = { id: string; keyword: string; country: string | null; status: string; found: number; depth: number; createdAt: string; parentId: string | null };
+
+function DataBank() {
+  const [d, setD] = useState<{ tasks: Task[]; bankSize: number; byStatus: Record<string, number>; addedTotal: number } | null>(null);
+  const [f, setF] = useState({ keywords: "", country: "", depth: "5" });
+  const load = useCallback(() => api<NonNullable<typeof d>>("/api/admin/bank").then(setD), []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, [load]);
+  if (!d) return <div className="h-40 animate-pulse rounded-panel bg-surface" />;
+  const st = d.byStatus;
+  return (
+    <div className="space-y-6">
+      <Panel className="grid grid-cols-2 divide-line sm:grid-cols-4 sm:divide-x">
+        {[
+          ["Businesses in the bank", d.bankSize],
+          ["Running now", st.RUNNING ?? 0],
+          ["Waiting", st.QUEUED ?? 0],
+          ["Collected (all time)", d.addedTotal],
+        ].map(([l, v]) => (
+          <div key={l as string} className="p-5">
+            <p className="text-[13px] text-muted">{l as string}</p>
+            <p className="tabular mt-1 text-2xl font-semibold">{formatNumber(v as number)}</p>
+          </div>
+        ))}
+      </Panel>
+
+      <Panel>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const b = await api<{ queued: number }>("/api/admin/bank", { method: "POST", body: JSON.stringify(f) });
+            if (b) {
+              toast.success(`Queued ${b.queued} task(s). They run in the background.`);
+              setF({ ...f, keywords: "" });
+              load();
+            }
+          }}
+          className="space-y-3 p-5"
+        >
+          <h2 className="text-[15px] font-semibold">Collect data</h2>
+          <p className="text-sm text-muted">
+            One search per line, like <span className="font-mono">restaurant in USA</span> or <span className="font-mono">dentist in Lahore</span>. A whole country
+            (USA, UK, Pakistan, UAE, India, Canada, Australia) is split into its big cities automatically. The scraping engine must be running.
+          </p>
+          <Textarea rows={4} value={f.keywords} onChange={(e) => setF({ ...f, keywords: e.target.value })} placeholder={"restaurant in USA\nsalon in UK\ndentist in Dubai"} className="font-mono text-[13px]" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="bc">Group tag (optional)</Label>
+              <Input id="bc" value={f.country} onChange={(e) => setF({ ...f, country: e.target.value })} placeholder="USA" />
+            </div>
+            <div>
+              <Label htmlFor="bd">Depth (more = more results, slower)</Label>
+              <Select id="bd" value={f.depth} onChange={(e) => setF({ ...f, depth: e.target.value })}>
+                {[3, 5, 10, 15, 20].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          <Button type="submit">Start collecting</Button>
+        </form>
+      </Panel>
+
+      <Panel>
+        <PanelHeader title="Tasks" description="Newest first. City tasks created from a country show their results here." />
+        <ul className="divide-y divide-line">
+          {d.tasks.map((t) => (
+            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+              <div className="min-w-0">
+                <p className="font-medium">
+                  {t.keyword}{" "}
+                  <Badge tone={t.status === "RUNNING" ? "info" : t.status === "DONE" ? "ok" : t.status === "FAILED" ? "danger" : "neutral"}>{t.status.toLowerCase()}</Badge>
+                  {t.parentId && <span className="ml-1 text-[11px] text-muted">(from a country task)</span>}
+                </p>
+                <p className="text-[12px] text-muted">
+                  {t.country ? `${t.country} · ` : ""}depth {t.depth} · {formatNumber(t.found)} added · {timeAgo(t.createdAt)}
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                {(t.status === "QUEUED" || t.status === "RUNNING") && (
+                  <Button size="sm" variant="ghost" onClick={async () => (await api(`/api/admin/bank/${t.id}`, { method: "PATCH", body: JSON.stringify({ action: "pause" }) })) && load()}>
+                    Pause
+                  </Button>
+                )}
+                {t.status === "PAUSED" && (
+                  <Button size="sm" variant="secondary" onClick={async () => (await api(`/api/admin/bank/${t.id}`, { method: "PATCH", body: JSON.stringify({ action: "resume" }) })) && load()}>
+                    Resume
+                  </Button>
+                )}
+                {t.status === "FAILED" && (
+                  <Button size="sm" variant="secondary" onClick={async () => (await api(`/api/admin/bank/${t.id}`, { method: "PATCH", body: JSON.stringify({ action: "retry" }) })) && load()}>
+                    Retry
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={async () => (await api(`/api/admin/bank/${t.id}`, { method: "DELETE" })) && load()}>
+                  Delete
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+    </div>
+  );
+}
+
+// ---------- Template marketplace ----------
+type MT = { id: string; authorName: string; official: boolean; approved: boolean; name: string; category: string; channel: string; language: string; subject: string | null; body: string; uses: number };
+
+function MarketplaceAdmin() {
+  const [show, setShow] = useState("pending");
+  const [rows, setRows] = useState<MT[] | null>(null);
+  const [f, setF] = useState({ name: "", category: "General", channel: "WHATSAPP", language: "english", subject: "", body: "", authorName: "Team" });
+  const load = useCallback(() => api<{ templates: MT[] }>(`/api/admin/marketplace?show=${show}`).then((b) => setRows(b?.templates ?? [])), [show]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    if (await api("/api/admin/marketplace", { method: "POST", body: JSON.stringify(f) })) {
+      toast.success("Official template added.");
+      setF({ ...f, name: "", subject: "", body: "" });
+      load();
+    }
+  }
+  return (
+    <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
+      <Panel>
+        <PanelHeader
+          title="Marketplace templates"
+          description="Approve what customers submit, and remove anything unsuitable."
+          action={
+            <Select value={show} onChange={(e) => setShow(e.target.value)} className="h-8 w-auto text-[13px]">
+              <option value="pending">Waiting for approval</option>
+              <option value="all">All</option>
+            </Select>
+          }
+        />
+        {rows?.length === 0 && <p className="px-5 py-8 text-center text-sm text-muted">Nothing here.</p>}
+        <ul className="divide-y divide-line">
+          {rows?.map((t) => (
+            <li key={t.id} className="px-5 py-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {t.name} {t.official && <Badge tone="pin">Official</Badge>} {t.approved ? <Badge tone="ok">Live</Badge> : <Badge>Pending</Badge>}
+                  </p>
+                  <p className="text-[12px] text-muted">
+                    {t.channel} · {t.language} · {t.category} · by {t.authorName} · {t.uses} uses
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-[13px] text-muted" dir="auto">
+                    {t.body}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button size="sm" variant="secondary" onClick={async () => (await api(`/api/admin/marketplace/${t.id}`, { method: "PATCH", body: JSON.stringify({ approved: !t.approved }) })) && load()}>
+                    {t.approved ? "Hide" : "Approve"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={async () => confirm("Delete this template?") && (await api(`/api/admin/marketplace/${t.id}`, { method: "DELETE" })) && load()}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+      <Panel>
+        <form onSubmit={create} className="space-y-3 p-5">
+          <h2 className="text-[15px] font-semibold">New official template</h2>
+          <Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Template name" required />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={f.channel} onChange={(e) => setF({ ...f, channel: e.target.value })}>
+              {["WHATSAPP", "EMAIL", "SMS"].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+            <Select value={f.language} onChange={(e) => setF({ ...f, language: e.target.value })}>
+              <option value="english">English</option>
+              <option value="urdu">Urdu</option>
+              <option value="roman_urdu">Roman Urdu</option>
+            </Select>
+          </div>
+          <Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} placeholder="Category (Web design, SEO…)" />
+          {f.channel === "EMAIL" && <Input value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })} placeholder="Subject" />}
+          <Textarea rows={6} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} placeholder="Message… use {{name}}, {{city}}" dir="auto" required />
+          <Button type="submit">Add official template</Button>
+        </form>
+      </Panel>
+    </div>
+  );
+}
+
+// ---------- Shared data pool ----------
+function DataPool() {
+  const [d, setD] = useState<{
+    settings: { enabled: boolean; days: number };
+    total: number;
+    fresh: number;
+    stale: number;
+    reused: number;
+    cities: { name: string; count: number }[];
+    categories: { name: string; count: number }[];
+  } | null>(null);
+  const load = () => api<NonNullable<typeof d>>("/api/admin/pool").then(setD);
+  useEffect(() => {
+    load();
+  }, []);
+  if (!d) return <div className="h-40 animate-pulse rounded-panel bg-surface" />;
+  const save = async (body: Record<string, unknown>) => {
+    if (await api("/api/admin/pool", { method: "PATCH", body: JSON.stringify(body) })) load();
+  };
+  return (
+    <div className="space-y-6">
+      <Panel className="space-y-4 p-6">
+        <div>
+          <h2 className="text-[15px] font-semibold">Shared data pool</h2>
+          <p className="mt-1 text-sm text-muted">
+            Every business any search finds is kept here (public Google Maps details only, never a customer's notes, stages or tags). When a customer searches,
+            matching businesses they don't have yet arrive instantly from the pool, and the engine adds new ones on top. Nobody gets the same business twice.
+          </p>
+        </div>
+        <Toggle checked={d.settings.enabled} onChange={(v) => save({ enabled: v })} label="Use the pool for new searches" />
+        <label className="flex items-center gap-2 text-sm">
+          Reuse businesses found in the last
+          <Input type="number" min={1} defaultValue={d.settings.days} onBlur={(e) => save({ days: Number(e.target.value) })} className="h-8 w-20" />
+          days
+        </label>
+      </Panel>
+      <Panel className="grid divide-y divide-line sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+        {[
+          ["Businesses in the pool", d.total],
+          ["Fresh enough to reuse", d.fresh],
+          ["Older (not reused)", d.stale],
+          ["Times reused", d.reused],
+        ].map(([l, v]) => (
+          <div key={l as string} className="p-5">
+            <p className="text-[13px] text-muted">{l as string}</p>
+            <p className="tabular mt-1 text-2xl font-semibold">{formatNumber(v as number)}</p>
+          </div>
+        ))}
+      </Panel>
+      <div className="grid gap-6 md:grid-cols-2">
+        {[
+          ["Top cities", d.cities],
+          ["Top categories", d.categories],
+        ].map(([t, rows]) => (
+          <Panel key={t as string}>
+            <PanelHeader title={t as string} />
+            <ul className="divide-y divide-line">
+              {(rows as { name: string; count: number }[]).map((r) => (
+                <li key={r.name} className="flex justify-between px-5 py-2 text-sm">
+                  <span>{r.name}</span>
+                  <span className="tabular text-muted">{formatNumber(r.count)}</span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            const b = await api<{ deleted: number }>("/api/admin/pool?scope=stale", { method: "DELETE" });
+            if (b) toast.success(`Removed ${b.deleted} old businesses.`);
+            load();
+          }}
+        >
+          Remove old entries
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={async () => {
+            if (!confirm("Empty the whole pool? Customers' own leads are not touched.")) return;
+            const b = await api<{ deleted: number }>("/api/admin/pool?scope=all", { method: "DELETE" });
+            if (b) toast.success(`Pool emptied (${b.deleted}).`);
+            load();
+          }}
+        >
+          Empty the pool
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Data integrations ----------
+const INTEL_KEYS = [
+  { key: "psi", name: "Google PageSpeed Insights", free: true, hint: "Free. Without a key it still works but may hit limits. Google Cloud Console: enable PageSpeed Insights API, create an API key." },
+  { key: "safebrowsing", name: "Google Safe Browsing", free: true, hint: "Free. Google Cloud Console: enable Safe Browsing API, create an API key." },
+  { key: "similarweb", name: "Similarweb (website traffic)", free: false, hint: "Paid. Monthly visit estimates." },
+  { key: "apollo", name: "Apollo.io (company data)", free: false, hint: "Paid. Employees, revenue, industry, founding year." },
+  { key: "zerobounce", name: "ZeroBounce (email verification)", free: false, hint: "Paid per check. Verifies emails before you send." },
+  { key: "numverify", name: "Numverify (phone line type)", free: false, hint: "Paid. Tells mobile vs landline vs VoIP, and the carrier." },
+];
+
+function IntegrationKeys() {
+  const [set, setSet] = useState<Record<string, boolean> | null>(null);
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const load = () => api<{ keys: Record<string, boolean> }>("/api/admin/integrations").then((b) => setSet(b?.keys ?? {}));
+  useEffect(() => {
+    load();
+  }, []);
+  if (!set) return <div className="h-40 animate-pulse rounded-panel bg-surface" />;
+  return (
+    <Panel className="max-w-3xl">
+      <PanelHeader title="Data integrations" description="Keys used by every customer's Deep check. Paid ones run only when a customer presses Paid data." />
+      <div className="divide-y divide-line">
+        {INTEL_KEYS.map((k) => (
+          <div key={k.key} className="space-y-2 px-5 py-4">
+            <p className="text-sm font-medium">
+              {k.name} <Badge tone={set[k.key] ? "ok" : "neutral"}>{set[k.key] ? "Connected" : "Not set"}</Badge> {k.free && <Badge tone="info">free</Badge>}
+            </p>
+            <p className="text-[12px] text-muted">{k.hint}</p>
+            <div className="flex gap-2">
+              <Input type="password" value={vals[k.key] ?? ""} onChange={(e) => setVals({ ...vals, [k.key]: e.target.value })} placeholder={set[k.key] ? "Saved (paste a new key to replace)" : "API key"} autoComplete="off" />
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (await api("/api/admin/integrations", { method: "PATCH", body: JSON.stringify({ [k.key]: vals[k.key] ?? "" }) })) {
+                    toast.success(vals[k.key] ? "Saved." : "Removed.");
+                    setVals({ ...vals, [k.key]: "" });
+                    load();
+                  }
+                }}
+              >
+                {vals[k.key] ? "Save" : set[k.key] ? "Remove" : "Save"}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
 // ---------- Coupons ----------
 type CouponRow = {
   id: string;
@@ -2073,6 +2473,15 @@ function PlatformSettings() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
+            <Label htmlFor="lp">Lead price (data bank)</Label>
+            <Input id="lp" type="number" min={0} value={s.lead_price} onChange={(e) => setS({ ...s, lead_price: e.target.value })} />
+            <Hint>What customers pay per lead bought from the data bank.</Hint>
+          </div>
+          <div>
+            <Label htmlFor="md">Minimum deposit</Label>
+            <Input id="md" type="number" min={0} value={s.min_deposit} onChange={(e) => setS({ ...s, min_deposit: e.target.value })} />
+          </div>
+          <div>
             <Label htmlFor="rc">Referral reward (credits)</Label>
             <Input id="rc" type="number" min={0} value={s.referral_credits} onChange={(e) => setS({ ...s, referral_credits: e.target.value })} />
             <Hint>Given when someone a customer invited starts a paid plan. 0 turns referrals off.</Hint>
@@ -2157,6 +2566,7 @@ export function AdminView() {
       </div>
       {tab === "Overview" && <Overview go={setTab} />}
       {tab === "Payments" && <Payments />}
+      {tab === "Deposits" && <Deposits />}
       {tab === "Support" && <SupportTab />}
       {tab === "Users" && <Users />}
       {tab === "Leads" && <AdminLeads />}
@@ -2164,6 +2574,10 @@ export function AdminView() {
       {tab === "Features" && <FeatureControl />}
       {tab === "Payment methods" && <PaymentMethods />}
       {tab === "Website" && <WebsiteSettings />}
+      {tab === "Integrations" && <IntegrationKeys />}
+      {tab === "Data pool" && <DataPool />}
+      {tab === "Data bank" && <DataBank />}
+      {tab === "Marketplace" && <MarketplaceAdmin />}
       {tab === "Coupons" && <Coupons />}
       {tab === "Activity log" && <ActivityLog />}
       {tab === "Errors" && <ErrorsTab />}

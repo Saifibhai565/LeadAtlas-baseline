@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Copy, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Hint, Input, Label } from "@/components/ui/field";
+import { Hint, Input, Label, Select } from "@/components/ui/field";
 import { Badge, Panel, PanelHeader } from "@/components/ui/panel";
 import { timeAgo } from "@/lib/utils";
 
-type Person = { id: string; name: string; email: string; createdAt?: string };
+type Person = { id: string; name: string; email: string; createdAt?: string; teamRole?: string };
 type Invite = { id: string; email: string; token: string; createdAt: string };
 type Data = { owner: Person; members: Person[]; invites: Invite[]; seats: number; isOwner: boolean };
 
@@ -84,6 +84,20 @@ export function TeamView() {
                 </p>
               </div>
               {data.isOwner && (
+                  <Select
+                    value={m.teamRole}
+                    onChange={async (e) => {
+                      await fetch(`/api/team/${m.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: e.target.value }) });
+                      load();
+                    }}
+                    className="h-8 w-auto text-[13px] mr-2"
+                    aria-label="Role"
+                  >
+                    <option value="MEMBER">Member</option>
+                    <option value="MANAGER">Manager</option>
+                  </Select>
+                )}
+                {data.isOwner && (
                 <button
                   onClick={() => removeMember(m)}
                   className="rounded-control p-1.5 text-muted hover:bg-raised hover:text-danger"

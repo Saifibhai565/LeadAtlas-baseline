@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Building2, Check, Mail, Phone, Globe2, Terminal } from "lucide-react";
 import { HeroBanner } from "@/components/hero-banner";
+import { StatsPanel } from "@/components/stats-panel";
 import { SIGNAL_INFO } from "@/lib/signals";
 import { JobStatusBadge } from "@/components/status-badge";
 import { Panel, PanelHeader } from "@/components/ui/panel";
@@ -89,6 +90,7 @@ export default async function DashboardPage() {
   return (
     <>
       <HeroBanner name={firstName} total={total} week={thisWeek} hot={hotCount} due={dueLeads.length} />
+      <StatsPanel isAdmin={user.isAdmin} />
 
       {stepsLeft > 0 && (
         <Panel className="mb-6 p-5">

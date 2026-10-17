@@ -101,6 +101,7 @@ export async function currentUser() {
     isAdmin,
     wsId: u.ownerId ?? u.id,
     isOwner: !u.ownerId,
+    teamRole: (u.ownerId ? (u as unknown as { teamRole?: string }).teamRole : "OWNER") ?? "MEMBER",
     credits: ws.credits,
     planName: planActive ? ws.plan!.name : "Free",
     planExpiresAt: planActive ? ws.planExpiresAt : null,

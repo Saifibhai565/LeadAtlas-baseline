@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "./db";
+import { addPoolLeads, takeFromPool } from "./pool";
 import { EngineError, engineCreateJob } from "./engine";
 
 export const LANGS = new Set(["en", "ur", "ar", "hi", "es", "fr", "de", "tr"]);
@@ -48,6 +49,33 @@ export async function createSearch(wsId: string, input: SearchInput) {
   const owner = await db.user.findUnique({ where: { id: wsId }, select: { credits: true } });
   if (!owner || owner.credits <= 0) throw new SearchError("You're out of credits. Add credits to run new searches.", 402);
 
+  // 1) Instant results from the shared pool (businesses this account doesn't have yet)
+  const goal = input.goal && input.goal > 0 ? Math.min(5000, Math.round(input.goal)) : null;
+  const fromPool = input.attempt ? [] : await takeFromPool(wsId, keywords, Math.min(goal ?? 100, owner.credits));
+  const baseJob = {
+    userId: wsId,
+    name,
+    keywords: JSON.stringify(keywords),
+    lang,
+    depth,
+    withEmails: Boolean(input.withEmails),
+    autoCheck: Boolean(input.autoCheck),
+    extraReviews: Boolean(input.extraReviews),
+    goal,
+    groupId: input.groupId ?? null,
+    attempt: input.attempt ?? 0,
+    watchId: input.watchId ?? null,
+  };
+
+  // The pool already covers the whole goal: no need to wait for the engine
+  if (goal && fromPool.length >= goal) {
+    const job = await db.job.create({
+      data: { ...baseJob, engineJobId: `pool_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`, status: "DONE", finishedAt: new Date() },
+    });
+    await addPoolLeads(wsId, job.id, fromPool.slice(0, goal), Boolean(input.autoCheck));
+    return { ...job, keywords };
+  }
+
   try {
     const engineJobId = await engineCreateJob({
       name,
@@ -61,23 +89,9 @@ export async function createSearch(wsId: string, input: SearchInput) {
       lat: input.lat,
       lon: input.lon,
     });
-    const job = await db.job.create({
-      data: {
-        userId: wsId,
-        engineJobId,
-        name,
-        keywords: JSON.stringify(keywords),
-        lang,
-        depth,
-        withEmails: Boolean(input.withEmails),
-        autoCheck: Boolean(input.autoCheck),
-        extraReviews: Boolean(input.extraReviews),
-        goal: input.goal && input.goal > 0 ? Math.min(5000, Math.round(input.goal)) : null,
-        groupId: input.groupId ?? null,
-        attempt: input.attempt ?? 0,
-        watchId: input.watchId ?? null,
-      },
-    });
+    const job = await db.job.create({ data: { ...baseJob, engineJobId } });
+    // 2) Pool results show straight away; the engine adds new businesses on top (duplicates are never saved twice)
+    if (fromPool.length) await addPoolLeads(wsId, job.id, fromPool, Boolean(input.autoCheck));
     return { ...job, keywords };
   } catch (err) {
     if (err instanceof EngineError) throw new SearchError(err.message, 503);

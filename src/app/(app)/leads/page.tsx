@@ -8,6 +8,7 @@ export default function LeadsPage() {
   return (
     <>
       <PageTitle
+        tkey="page.leads"
         title="Leads"
         description="Every business your searches have found. Filter them, track who you've contacted, and export."
       />

@@ -171,10 +171,24 @@ export function TemplatesView() {
                 Save template
               </Button>
               {current.id && (
-                <Button variant="ghost" onClick={() => remove(current)}>
-                  <Trash2 className="h-4 w-4" aria-hidden />
-                  Delete
-                </Button>
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      const category = prompt("Category for the marketplace (e.g. Web design, SEO, General)?", "General");
+                      if (category === null) return;
+                      const res = await fetch("/api/marketplace", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateId: current.id, category }) });
+                      if (res.ok) toast.success("Submitted. We'll review it for the marketplace.");
+                      else toast.error("Couldn't submit.");
+                    }}
+                  >
+                    Submit to marketplace
+                  </Button>
+                  <Button variant="ghost" onClick={() => remove(current)}>
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                    Delete
+                  </Button>
+                </>
               )}
             </div>
           </Panel>

@@ -2,7 +2,7 @@
 
 Every file in the project and what it contains. Generated from the code, so it stays accurate.
 
-Total files: 325
+Total files: 350
 
 ## Project root
 
@@ -14,6 +14,7 @@ Total files: 325
 | `CHANGES.md` | Log of every change: who, which files, database changed or not. |
 | `DEPLOY.md` | Step-by-step server setup with Docker, domain, SSL, backups (Roman Urdu). |
 | `Dockerfile` | Builds the production app image (build stage + small run stage, runs prisma db push then the server). |
+| `FILE_MAP.md` | This file: every file and what it contains. |
 | `PROJECT_GUIDE.md` | Architecture, rules and feature map for developers and AI assistants. Read first. |
 | `README.md` | What each phase added, and how to install, run and update (Roman Urdu). |
 | `next.config.mjs` | Next.js settings: standalone build for Docker, security headers. |
@@ -80,6 +81,7 @@ Total files: 325
 | `src/app/(app)/layout.tsx` | Signed-in shell: sidebar and top bar, and blocks pages that are off for the person's plan. |
 | `src/app/(app)/admin/page.tsx` | Page /admin (Super Admin). Uses AdminView. |
 | `src/app/(app)/billing/page.tsx` | Page /billing (Billing). Uses BillingView. |
+| `src/app/(app)/bulk-email/page.tsx` | Page /bulk-email (Bulk email). Uses BulkEmailView. |
 | `src/app/(app)/campaigns/page.tsx` | Page /campaigns (Campaigns). Uses CampaignsView. |
 | `src/app/(app)/campaigns/[id]/page.tsx` | Page /campaigns/[id] (Campaign). Uses CampaignRunner. |
 | `src/app/(app)/dashboard/page.tsx` | Page /dashboard (Dashboard). Mix categories so the list isn't six of the same kind |
@@ -130,6 +132,7 @@ Total files: 325
 | `src/app/api/admin/errors/route.ts` | DELETE GET POST /api/admin/errors. POST { id?, all?: true } — mark fixed (it reopens if it happens again). DELETE clears fixed ones. |
 | `src/app/api/admin/features/route.ts` | GET PATCH /api/admin/features. PATCH { config: { [key]: { on, plans[] } } } |
 | `src/app/api/admin/health/route.ts` | GET /api/admin/health. |
+| `src/app/api/admin/integrations/route.ts` | GET PATCH /api/admin/integrations. PATCH { psi?, safebrowsing?, similarweb?, apollo?, zerobounce? } — empty string removes a key; missing leaves it. |
 | `src/app/api/admin/leads/route.ts` | GET /api/admin/leads. Every lead from every customer, with filters and paging. |
 | `src/app/api/admin/leads/bulk/route.ts` | POST /api/admin/leads/bulk. POST { action: "delete", ids?: string[], all?: true, query?: string } |
 | `src/app/api/admin/leads/export/route.ts` | GET /api/admin/leads/export. CSV of every lead matching the filters (or the ids given), across all customers. |
@@ -141,6 +144,8 @@ Total files: 325
 | `src/app/api/admin/payments/[id]/route.ts` | POST /api/admin/payments/[id]. POST { action: "approve" / "reject", note? } |
 | `src/app/api/admin/plans/route.ts` | GET POST /api/admin/plans. |
 | `src/app/api/admin/plans/[id]/route.ts` | PATCH /api/admin/plans/[id]. |
+| `src/app/api/admin/pool/route.ts` | DELETE GET PATCH /api/admin/pool. The shared data pool: size, freshness, top cities and categories, reuse. |
+| `src/app/api/admin/sending-server/route.ts` | GET PATCH /api/admin/sending-server. PATCH { enabled, host, port, user, pass?, domains, defaultFrom, dailyLimit, gapSeconds } — checks the login before saving. |
 | `src/app/api/admin/settings/route.ts` | GET PATCH /api/admin/settings. |
 | `src/app/api/admin/support/route.ts` | GET POST /api/admin/support. POST { ticketId, body } replies as the team; POST { ticketId, close: true } closes. |
 | `src/app/api/admin/test-email/route.ts` | GET POST /api/admin/test-email. |
@@ -172,6 +177,10 @@ Total files: 325
 | `src/app/api/billing/checkout/route.ts` | POST /api/billing/checkout. POST { planId } — returns a card payment page URL. |
 | `src/app/api/billing/coupon/route.ts` | POST /api/billing/coupon. POST { planId, code } — previews what a coupon takes off. |
 | `src/app/api/branding/route.ts` | GET PATCH /api/branding. |
+| `src/app/api/bulk-email/route.ts` | GET POST /api/bulk-email. Mailboxes, sending server info and bulk sends with live counts. |
+| `src/app/api/bulk-email/[id]/route.ts` | PATCH /api/bulk-email/[id]. PATCH { action: "pause" / "resume" / "cancel" } |
+| `src/app/api/bulk-email/mailbox/route.ts` | POST /api/bulk-email/mailbox. POST { fromName, fromEmail?, replyTo } — a mailbox that sends through the platform's shared server. |
+| `src/app/api/bulk-email/mailbox/[id]/route.ts` | PATCH /api/bulk-email/mailbox/[id]. PATCH { dailyLimit?, gapSeconds?, fromName?, replyTo?, active? } — any number the server allows. |
 | `src/app/api/campaigns/route.ts` | GET POST /api/campaigns. POST { name, channel: "WHATSAPP" / "SMS", templates: string[], query } |
 | `src/app/api/campaigns/[id]/route.ts` | DELETE GET PATCH /api/campaigns/[id]. PATCH { status: "ACTIVE" / "PAUSED" } — pause or resume an automatic campaign. |
 | `src/app/api/campaigns/[id]/items/[itemId]/route.ts` | PATCH /api/campaigns/[id]/items/[itemId]. PATCH { action: "sent" / "skip", message? } — the person opened WhatsApp/SMS and sent it, or skipped this lead. |
@@ -189,6 +198,7 @@ Total files: 325
 | `src/app/api/feed/route.ts` | GET POST /api/feed. GET: the workspace's private Sheets feed link. POST: make a new link (the old one stops working). |
 | `src/app/api/feed/[token]/route.ts` | GET /api/feed/[token]. Private CSV feed. In Google Sheets: =IMPORTDATA("this link") keeps a sheet in sync with your leads. |
 | `src/app/api/health/route.ts` | GET /api/health. |
+| `src/app/api/integrations/hubspot/route.ts` | DELETE GET POST /api/integrations/hubspot. POST { token } checks the token with HubSpot and saves it. DELETE disconnects. |
 | `src/app/api/integrations/instagram/route.ts` | DELETE GET POST /api/integrations/instagram. POST { igUserId, token } — your own Instagram Business account id and a token with instagram_basic access. |
 | `src/app/api/integrations/sms/route.ts` | GET PATCH POST /api/integrations/sms. PATCH { smsUrl, smsMethod, smsBody } ; POST { to } sends a test message. |
 | `src/app/api/jobs/route.ts` | GET POST /api/jobs. |
@@ -200,16 +210,19 @@ Total files: 325
 | `src/app/api/leads/[id]/call/route.ts` | POST /api/leads/[id]/call. POST { outcome, note?, followUpDays? } — records a phone call and what happens next. |
 | `src/app/api/leads/[id]/competitors/route.ts` | GET /api/leads/[id]/competitors. The strongest businesses of the same kind nearby, from this workspace's own leads. |
 | `src/app/api/leads/[id]/instagram/route.ts` | POST /api/leads/[id]/instagram. |
+| `src/app/api/leads/[id]/intel/route.ts` | POST /api/leads/[id]/intel. POST { action: "check" / "owner-email" / "paid" } — deep check, owner email finder, paid sources. |
 | `src/app/api/leads/[id]/report/route.ts` | DELETE POST /api/leads/[id]/report. Creates (or returns) a public link to this lead's website report. |
 | `src/app/api/leads/[id]/review-tools/route.ts` | GET POST /api/leads/[id]/review-tools. POST { action: "link" / "monitor-on" / "monitor-off" } |
 | `src/app/api/leads/[id]/sms/route.ts` | POST /api/leads/[id]/sms. POST { body } — queues an SMS through the provider. Only for leads who agreed to receive messages. |
 | `src/app/api/leads/bulk/route.ts` | POST /api/leads/bulk. POST { ids: string[], action: "status" / "check" / "tag" / "delete", status? } |
 | `src/app/api/leads/export/route.ts` | GET /api/leads/export. BOM so Excel opens Urdu/special characters correctly |
 | `src/app/api/leads/facets/route.ts` | GET /api/leads/facets. Categories with counts, for the category filter. |
+| `src/app/api/leads/hubspot/route.ts` | POST /api/leads/hubspot. POST { ids } — sends up to 200 leads to HubSpot as companies (and contacts). |
 | `src/app/api/leads/import/route.ts` | POST /api/leads/import. POST { rows: [{ name, phone?, email?, website?, address?, category? }], check? } |
 | `src/app/api/leads/learn/route.ts` | POST /api/leads/learn. POST — learns from won and lost deals and re-scores open leads. |
 | `src/app/api/leads/lookalike/route.ts` | POST /api/leads/lookalike. POST — finds more businesses like the ones you've won: same kinds, same cities. |
 | `src/app/api/leads/map/route.ts` | GET /api/leads/map. |
+| `src/app/api/leads/merge/route.ts` | POST /api/leads/merge. POST — merges the same business saved more than once (same phone or website). |
 | `src/app/api/leads/signals/route.ts` | POST /api/leads/signals. POST — recalculates lead signals and scores for the whole account. |
 | `src/app/api/me/features/route.ts` | GET /api/me/features. |
 | `src/app/api/notifications/route.ts` | GET POST /api/notifications. Marks everything as read. |
@@ -236,6 +249,7 @@ Total files: 325
 | `src/app/api/sites/[id]/ai/route.ts` | POST /api/sites/[id]/ai. POST { instruction } — asks AI to change the website, e.g. "make it blue" or "add Sunday hours 10-4". |
 | `src/app/api/sources/osm/route.ts` | GET POST /api/sources/osm. POST { city, category, check? } — saves businesses from OpenStreetMap. 1 credit per new lead. |
 | `src/app/api/sources/product/route.ts` | POST /api/sources/product. POST { product, intent: "sell" / "buy", cities: string, goal? } |
+| `src/app/api/stats/route.ts` | GET /api/stats. Every count for the dashboard statistics panel. ?scope=all (Super Admin) counts every customer. |
 | `src/app/api/support/route.ts` | GET POST /api/support. POST { message } — the person writes; the AI assistant answers, or the team is told. POST { human: true } asks for a person. |
 | `src/app/api/t/o/[id]/route.ts` | GET /api/t/o/[id]. 1x1 transparent GIF |
 | `src/app/api/team/route.ts` | GET POST /api/team. Owner invites someone: POST { email } -> returns a link to share. |
@@ -264,13 +278,14 @@ Total files: 325
 | File | What it contains |
 |---|---|
 | `src/components/accept-proposal.tsx` | Browser component.  Exports: AcceptProposal. |
-| `src/components/admin-view.tsx` | All Super Admin tabs: overview, payments, support, users, leads, plans, payment methods, features, coupons, website, activity log, errors, system, settings. |
+| `src/components/admin-view.tsx` | Browser component. ---------- Overview ---------- Exports: AdminView. |
 | `src/components/ai-panels.tsx` | Browser component. Whether AI features are available to this person (cached per page load). Exports: useAiAvailable, AiBrief, ReplyAssistant. |
-| `src/components/app-shell.tsx` | Sidebar, top bar (engine dot, theme, notifications, plan, credits), banners, command menu, help button. |
+| `src/components/app-shell.tsx` | Browser component.  Exports: AppShell. |
 | `src/components/audit-panels.tsx` | Browser component.  Exports: AuditList. |
 | `src/components/auth-form.tsx` | Browser component.  Exports: AuthForm. |
-| `src/components/billing-view.tsx` | Billing page: plans, payment methods, coupon, payment form, history and invoices, referral link. |
+| `src/components/billing-view.tsx` | Browser component. eslint-disable-next-line react-hooks/exhaustive-deps Exports: BillingView. |
 | `src/components/brand.tsx` | Browser component. The uploaded logo when there is one, otherwise the pin mark and the name. Exports: BrandProvider, useBrand, BrandMark. |
+| `src/components/bulk-email-view.tsx` | Bulk email page. |
 | `src/components/call-panel.tsx` | Browser component.  Exports: CallPanel. |
 | `src/components/campaign-runner.tsx` | Browser component.  Exports: CampaignRunner. |
 | `src/components/campaigns-view.tsx` | Browser component.  Exports: CampaignsView. |
@@ -283,15 +298,17 @@ Total files: 325
 | `src/components/extract-view.tsx` | Browser component.  Exports: ExtractView. |
 | `src/components/forgot-form.tsx` | Browser component.  Exports: ForgotForm. |
 | `src/components/help-center.tsx` | Browser component.  Exports: HelpCenter. |
-| `src/components/hero-banner.tsx` | Dashboard animated radar banner. |
+| `src/components/hero-banner.tsx` | Browser component. Animated dashboard banner: a radar sweeping a city grid, pins lighting up as leads are found. Exports: HeroBanner. |
 | `src/components/import-leads.tsx` | Browser component. Column names people commonly use, in English and Roman Urdu Exports: ImportLeads. |
 | `src/components/inbox-view.tsx` | Browser component.  Exports: InboxView. |
 | `src/components/invite-form.tsx` | Browser component.  Exports: InviteForm. |
 | `src/components/lead-activity.tsx` | Browser component.  Exports: LeadActivity. |
-| `src/components/lead-drawer.tsx` | Lead panel: next step, why now, win this deal, message, phone call, replies, contact, online, competitors, profile check, reviews, review tools, SEO, store, website check, history. |
+| `src/components/lead-details.tsx` | All details section. |
+| `src/components/lead-drawer.tsx` | Browser component.  Exports: LeadDrawer. |
+| `src/components/lead-intel.tsx` | Deep check section. |
 | `src/components/leads-map.tsx` | Browser component. Create the map once Exports: LeadsMap. |
-| `src/components/leads-view.tsx` | Leads page: search, filters, signals, tags, saved views, Ask AI, table, map, bulk actions, import, export. |
-| `src/components/message-composer.tsx` | Write a message: WhatsApp/SMS/Email, templates, AI writer, send from mailbox or WhatsApp Business. |
+| `src/components/leads-view.tsx` | Browser component. Leads for the table Exports: LeadsView. |
+| `src/components/message-composer.tsx` | Browser component. Shared across drawers in one page view so we don't refetch every time Exports: MessageComposer. |
 | `src/components/outreach-view.tsx` | Browser component. ---------- Mailboxes ---------- Exports: OutreachView. |
 | `src/components/page-title.tsx` | Exports: PageTitle. |
 | `src/components/pipeline-board.tsx` | Browser component. Optimistic move Exports: PipelineBoard. |
@@ -304,18 +321,20 @@ Total files: 325
 | `src/components/review-tools.tsx` | Browser component. For businesses you work for: review link and QR, weekly review monitoring, private feedback. Exports: ReviewTools. |
 | `src/components/reviews-panel.tsx` | Browser component.  Exports: ReviewsPanel. |
 | `src/components/sales-tools.tsx` | Browser component. AI website demo + AI proposal for one lead. Exports: SalesTools, Competitors, GbpCheck. |
-| `src/components/searches-view.tsx` | Searches page: new search form (goal, AI planner), find by product, OpenStreetMap, searches list. |
+| `src/components/searches-view.tsx` | Browser component.  Exports: SearchesView. |
 | `src/components/settings-view.tsx` | Browser component.  Exports: SettingsView. |
 | `src/components/signals-panel.tsx` | Browser component.  Exports: SignalsPanel. |
 | `src/components/sites-view.tsx` | Browser component.  Exports: SitesView. |
+| `src/components/social-links.tsx` | Social profile buttons. |
+| `src/components/stats-panel.tsx` | Dashboard statistics with 9 tabs and counts for every kind of data. |
 | `src/components/status-badge.tsx` | Exports: JobStatusBadge. |
-| `src/components/support-widget.tsx` | Help button and chat (AI assistant and support team). |
+| `src/components/support-widget.tsx` | Browser component. Floating "Help" button with the AI assistant and the support team. Exports: SupportWidget. |
 | `src/components/team-view.tsx` | Browser component.  Exports: TeamView. |
 | `src/components/templates-view.tsx` | Browser component.  Exports: TemplatesView. |
 | `src/components/use-features.tsx` | Browser component. Feature keys the Super Admin allows for this person (cached per page load). Exports: useFeatures. |
 | `src/components/watches-view.tsx` | Browser component.  Exports: WatchesView. |
-| `src/components/landing/faq.tsx` | Website questions accordion. |
-| `src/components/landing/live-scan.tsx` | Website hero: animated map scan with pins and live feed. |
+| `src/components/landing/faq.tsx` | Browser component.  Exports: Faq. |
+| `src/components/landing/live-scan.tsx` | Browser component. Hero: a city map being scanned, pins appearing, and a live feed of businesses found. Sample data only. Exports: LiveScan. |
 | `src/components/ui/button.tsx` | Exports: Button. |
 | `src/components/ui/field.tsx` | Exports: Input, Textarea, Select, Label, Hint, Toggle. |
 | `src/components/ui/panel.tsx` | Exports: Panel, PanelHeader, Badge. |
@@ -324,57 +343,63 @@ Total files: 325
 
 | File | What it contains |
 |---|---|
-| `src/lib/admin-leads.ts` | Filters for Super Admin > Leads (all customers' leads). |
-| `src/lib/ai-route.ts` | Blocks AI routes when there's no key or the plan has no AI; turns AI errors into replies. |
-| `src/lib/ai.ts` | AI: Anthropic calls, extraction, message writer, daily AI budget, JSON parsing, lead description for prompts. |
-| `src/lib/apikey.ts` | Public API keys: create, hash, check (Bearer la_...), CORS and rate limit. |
-| `src/lib/audit.ts` | Writes admin actions to the activity log. |
-| `src/lib/auth.ts` | Sessions and the signed-in person: currentUser (id, wsId, plan, permissions), requireUser/requireAdmin, impersonation. |
-| `src/lib/billing.ts` | Approves a payment (plan for 30 days, credits, invoice number, coupon, referral reward); Lemon Squeezy card checkout. |
-| `src/lib/brand.ts` | Brand for the current domain: platform name/colour or an agency's white-label brand. |
-| `src/lib/campaign-send.ts` | Sends automatic WhatsApp-template and SMS-provider campaigns to opted-in leads. |
-| `src/lib/coupons.ts` | Checks a coupon code and works out the discount. |
-| `src/lib/crypto.ts` | Encrypts mailbox/API passwords; signs links (unsubscribe). |
-| `src/lib/db.ts` | The Prisma database client (SQLite in WAL mode). |
-| `src/lib/emails.ts` | All platform email templates (welcome, reset, invite, payments, plan expiring, watch results, weekly digest, test). |
-| `src/lib/engine.ts` | Talks to the Go scraping engine: create job, status, download CSV, ping. |
-| `src/lib/enrich.ts` | Website checks worker: emails, phones, social links, tech, website audit, SEO audit, store audit, owner name, builder, domain expiry, email domain check. |
-| `src/lib/errors.ts` | Records an error once per kind and counts repeats. |
-| `src/lib/feature-list.ts` | The list of features the Super Admin can turn on/off per plan, and their pages. |
-| `src/lib/features.ts` | Works out which features a person may see. |
-| `src/lib/gbp.ts` | Google Business Profile check (website, phone, hours, description, photo, reviews, rating). |
-| `src/lib/help.ts` | Help center articles (English). |
-| `src/lib/http.ts` | API helpers: fail(), unauthorized(), forbidden(), apiUser(), apiAdmin(). |
-| `src/lib/instagram.ts` | Instagram Business Discovery lookups (followers, posts). |
-| `src/lib/issues.ts` | Plain-language names for website problems. |
-| `src/lib/jobs.ts` | Imports search results: parses the engine CSV, saves new leads, charges credits, refreshes known leads and spots changes, lead goals and follow-up rounds. |
-| `src/lib/leads.ts` | Re-scoring helpers, activity log helper, status labels. |
-| `src/lib/learn.ts` | Learns which categories you win most and adjusts scores. |
-| `src/lib/mail.ts` | Platform email sender (SMTP), APP_URL helper. |
-| `src/lib/method-input.ts` | Payment method validation, price per currency (USD/USDT), blockchain explorer links. |
-| `src/lib/notify.ts` | Creates in-app notifications. |
-| `src/lib/osm.ts` | OpenStreetMap (Overpass) business search. |
+| `src/lib/admin-leads.ts` | Server only. Filters for the admin's view of every customer's leads. Exports: adminLeadWhere. |
+| `src/lib/ai-route.ts` | Server only. Returns an error response when AI can't be used by this person, otherwise null. Exports: aiBlocked, aiFail. |
+| `src/lib/ai.ts` | Server only. Daily AI budget per workspace, so one account can't run up a huge bill. Exports: AI_ENABLED, extractBusinesses, writeMessage, AiError, aiBudget, callClaude, parseJson, describeLead. |
+| `src/lib/apikey.ts` | Server only. Authenticates a public API request. Returns the workspace id, or an error response. Exports: hashKey, newKey, apiJson, apiError, preflight, apiAuth. |
+| `src/lib/audit.ts` | Server only. Records an admin action. Never throws. Exports: audit. |
+| `src/lib/auth.ts` | Server only. Admin support tool: keeps the admin's own session aside and signs in as someone else. Exports: startSession, endSession, IMPERSONATOR_COOKIE, startImpersonation, stopImpersonation, currentUser, requireUser, requireAdmin. |
+| `src/lib/billing.ts` | Server only. Switches on a PENDING payment: plan for 30 days (added to any time left on the same plan), credits, Exports: approvePayment, CARD_ENABLED, createCardCheckout. |
+| `src/lib/brand.ts` | Server only. The owner whose white-label domain this is, if their plan still allows it. Exports: ownerForDomain, currentBrand, hexToRgbVar, platformBrand. |
+| `src/lib/bulk-sender.ts` | Bulk email sender. |
+| `src/lib/campaign-send.ts` | Server only. Sends the next few messages of automatic campaigns (opted-in leads only, official channels). Exports: processApiCampaigns. |
+| `src/lib/coupons.ts` | Server only. Works out what a coupon takes off a plan. Counts approved and waiting payments against the use limit. Exports: checkCoupon. |
+| `src/lib/crypto.ts` | Server only. Encrypts a short secret (like a mailbox password) for storage. Changing AUTH_SECRET makes old values unreadable. Exports: encrypt, decrypt, sign, unsign. |
+| `src/lib/db.ts` | SQLite tuning: WAL lets reads continue while background workers write, Exports: db. |
+| `src/lib/emails.ts` | Server only. Email templates. Simple, readable on phones, and with a plain-text version for every email. Exports: emails. |
+| `src/lib/engine.ts` | Server only. Client for the Go scraping engine (gosom/google-maps-scraper web mode). Exports: ENGINE_OFFLINE_MESSAGE, EngineError, enginePing, engineCreateJob, engineJobStatus, engineDownloadCsv. |
+| `src/lib/enrich.ts` | Server only. Domain expiry from the public RDAP registry (not every country's domains support it). Exports: emailDomainStatus, kickEnrichment. |
+| `src/lib/errors.ts` | Small string hash (FNV-1a), so this file needs no Node-only modules. Exports: recordError. |
+| `src/lib/feature-list.ts` | Everything the Super Admin can show or hide, per plan. Leads, dashboard, billing and settings are always on. Exports: FEATURES, featureForPath. |
+| `src/lib/features.ts` | Server only. Feature keys this person can see. The Super Admin always sees everything. Exports: getFeatureConfig, allowedFeatures. |
+| `src/lib/gbp.ts` | A quick check of a business's Google Maps profile, from what the search saved. Exports: gbpAudit. |
+| `src/lib/help.ts` | In-app help articles (English). Each step is one short sentence. Exports: HELP. |
+| `src/lib/http.ts` | For admin API routes: returns the admin, or null (send `forbidden()`). Exports: fail, apiUser, unauthorized, apiAdmin, forbidden. |
+| `src/lib/hubspot.ts` | Sends leads to HubSpot. |
+| `src/lib/instagram.ts` | Server only. Public numbers of another business account, via the official Business Discovery API. Exports: igUsername, igLookup, refreshInstagram. |
+| `src/lib/issues.ts` | Plain-language names for website problems. These are sales openings for agencies. Exports: ISSUE_INFO, ISSUE_KEYS, issueList, scoreTone. |
+| `src/lib/jobs.ts` | Server only. Keeps up to 20 reviews with text, newest first as Google gives them, trimmed for storage. Exports: syncActiveJobs. |
+| `src/lib/lead-details.ts` | Extra Google Maps details and the fake-email filter. |
+| `src/lib/lead-intel.ts` | Deep check: domain age, SSL, contact form/booking/chat/careers, PageSpeed, Safe Browsing, reviews trend, contact quality, owner email finder, paid sources, duplicate merge. |
+| `src/lib/leads.ts` | Server only. Scores leads saved before scoring existed. Runs in small batches. Exports: rescoreLead, rescoreMissing, logActivity, STATUS_LABEL. |
+| `src/lib/learn.ts` | Server only. Learns which categories this workspace wins most often and turns it into a small score boost (-10 to +15). Exports: learnBoosts, getBoosts, rescoreWorkspace, scheduleLearning. |
+| `src/lib/mail.ts` | Server only. Sends an email. Never throws: returns false when it couldn't send. Exports: SMTP_READY, appUrl, sendMail, sendMailLater, adminAlertEmail. |
+| `src/lib/method-input.ts` | Plans are priced in their own currency; dollar and stablecoin methods use the plan's USD price. Exports: CRYPTO_NETWORKS, methodInput, amountFor, explorerUrl. |
+| `src/lib/notify.ts` | Server only.  Exports: notify. |
+| `src/lib/osm.ts` | Server only. Business types we can look up on OpenStreetMap, mapped to its tags. Exports: OSM_CATEGORIES, osmSearch. |
 | `src/lib/outreach-route.ts` | Server only.  Exports: outreachBlocked. |
-| `src/lib/outreach.ts` | Email outreach: queue, send from customer mailboxes, sequences, bounces, unsubscribes. |
-| `src/lib/plan-input.ts` | Plan form validation. |
-| `src/lib/rank.ts` | Rank tracker: grid points, engine jobs per point, reading positions. |
-| `src/lib/ratelimit.ts` | Simple in-memory rate limits. |
-| `src/lib/sanitize.ts` | Cleans AI-made HTML (no scripts or outside files). |
-| `src/lib/scheduler.ts` | Background tick: watches, reminders, digests, email outbox and sequences, campaigns, SMS, rank checks, running searches. |
-| `src/lib/score.ts` | Lead score 0-100. |
-| `src/lib/searches.ts` | Starts a Google Maps search (validation, credits, engine job, lead goal). |
-| `src/lib/sequence-input.ts` | Email sequence form validation. |
-| `src/lib/settings.ts` | Platform settings with defaults (stored in AppSetting), default plans. |
-| `src/lib/signals-server.ts` | Recomputes signals, branches and scores for leads. |
-| `src/lib/signals.ts` | Lead signal rules (busy, recently opened, runs ads...) and best contact time. |
-| `src/lib/sms.ts` | Sends SMS through the workspace's provider; SMS queue. |
-| `src/lib/tags.ts` | Tag storage helpers. |
-| `src/lib/template-input.ts` | Template form validation. |
-| `src/lib/template.ts` | Fills message templates ({{name}}, {{city}}...) and the starter templates. |
-| `src/lib/theme.ts` | Switches light/dark theme. |
-| `src/lib/token.ts` | Signs and checks the login cookie (used by middleware). |
-| `src/lib/tokens.ts` | One-time email tokens (confirm email, reset password). |
-| `src/lib/utils.ts` | Small helpers: cn, APP_NAME, WhatsApp number format, number/date formatting. |
-| `src/lib/web.ts` | Safe page fetching: robots.txt, no private networks, size and time limits; HTML to text. |
-| `src/lib/webhooks.ts` | Sends signed webhooks; public lead format. |
-| `src/lib/whatsapp.ts` | WhatsApp Cloud API: phone info, templates, send text/template, 24-hour window. |
+| `src/lib/outreach.ts` | Server only. Plain, personal-looking email: no images or design, which is what lands in the inbox for cold email. Exports: parseSteps, unsubscribeUrl, isSuppressed, queueEmail, processSequences, processOutbox, forgetTransport. |
+| `src/lib/plan-input.ts` | Exports: planInput. |
+| `src/lib/platform-sender.ts` | Shared sending server settings. |
+| `src/lib/pool.ts` | Shared data pool: saves found businesses (public data), serves unseen matches to new searches instantly. |
+| `src/lib/rank.ts` | Server only. Grid of points around a center, spacing in km. Exports: gridPoints, startRankCheck, processRankChecks. |
+| `src/lib/ratelimit.ts` | Server only. Small in-memory rate limiter (one server process). Returns true when the request is allowed. Exports: allow, clientIp. |
+| `src/lib/sanitize.ts` | Removes scripts, event handlers and external loads from AI-made HTML. It is also shown in a sandboxed frame. Exports: sanitizeHtml. |
+| `src/lib/scheduler.ts` | Server only. Runs due watches and keeps unattended searches moving. Exports: tick. |
+| `src/lib/score.ts` | Lead score, 0-100. Higher = easier to reach and more likely to need help. Exports: scoreLead, scoreLabel. |
+| `src/lib/searches.ts` | Server only. Validates and starts a Google Maps search for a workspace. Used by the app, watches and the public API. Exports: LANGS, SearchError, createSearch. |
+| `src/lib/sequence-input.ts` | Exports: parseSequenceInput. |
+| `src/lib/settings.ts` | Server only. Platform settings the admin can change from the admin panel. Exports: SETTING_DEFAULTS, getSetting, getSettings, setSetting, DEFAULT_PLANS, ensurePlans, getLightSettings. |
+| `src/lib/signals-server.ts` | Server only. Recomputes signals, branches, best time and score for a workspace's leads. Safe to call often. Exports: recomputeSignals, recomputeLeadSignals, refreshOncePerStart. |
+| `src/lib/signals.ts` | Lead signals: short reasons why now is a good moment to contact a business. Pure functions (server and browser). Exports: SIGNAL_INFO, isSocialOnly, busyLevel, bestContactTime, computeSignals, signalPoints. |
+| `src/lib/sms.ts` | Server only. Sends one SMS through the workspace's provider (any HTTP API, including Android gateway apps). Exports: sendSms, processSms. |
+| `src/lib/tags.ts` | Tags are stored as ",hot,clinic," so a filter can match a whole tag exactly. Exports: parseTags, cleanTag, storeTags. |
+| `src/lib/template-input.ts` | Exports: parseTemplate. |
+| `src/lib/template.ts` | "Street, Area, Lahore, Pakistan" -> "Lahore" Exports: VARIABLES, renderTemplate, STARTER_TEMPLATES. |
+| `src/lib/theme.ts` | Switches between dark and light, remembered in a cookie so pages load in the right theme. Exports: toggleTheme. |
+| `src/lib/token.ts` | Edge-safe helpers (used by middleware). No database or Node-only imports here. Exports: SESSION_COOKIE, SESSION_MAX_AGE, signSession, verifySession. |
+| `src/lib/tokens.ts` | Server only. Creates a one-time token for VERIFY or RESET. Only its hash is stored. Exports: createEmailToken, consumeEmailToken, peekEmailToken. |
+| `src/lib/utils.ts` | Turns "0300 1234567" or "+92 300 1234567" into "923001234567" for wa.me links. Exports: cn, APP_NAME, whatsappNumber, formatNumber, timeAgo, websiteHost. |
+| `src/lib/web.ts` | Server only. Polite page fetcher: identifies itself, respects robots.txt, times out, Exports: USER_AGENT, normalizeUrl, isPrivateIp, assertPublicHost, allowedByRobots, fetchPage, htmlToText. |
+| `src/lib/webhooks.ts` | Server only. Sends an event to every active webhook of the workspace that listens for it. Never throws. Exports: WEBHOOK_EVENTS, emit, deliver, publicLead. |
+| `src/lib/whatsapp.ts` | Server only. WhatsApp only allows free-form messages within 24 hours of the contact's last message. Exports: waPhoneInfo, waTemplates, waSendText, waSendTemplate, windowOpen. |

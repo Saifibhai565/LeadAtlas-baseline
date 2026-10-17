@@ -27,6 +27,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!(g >= min && g <= 3600)) return fail(`Wait between emails must be between ${min} and 3600 seconds.`);
     data.gapSeconds = g;
   }
+  if (b.sendFromHour != null) data.sendFromHour = Math.min(23, Math.max(0, Math.round(Number(b.sendFromHour)) || 0));
+  if (b.sendToHour != null) data.sendToHour = Math.min(23, Math.max(0, Math.round(Number(b.sendToHour)) || 0));
+  if (b.sendTz !== undefined) data.sendTz = String(b.sendTz).trim().slice(0, 40) || null;
   if (b.fromName) data.fromName = String(b.fromName).trim().slice(0, 80);
   if (b.replyTo !== undefined) data.replyTo = String(b.replyTo).trim().toLowerCase() || null;
   if (typeof b.active === "boolean") Object.assign(data, { active: b.active, ...(b.active ? { lastError: null } : {}) });

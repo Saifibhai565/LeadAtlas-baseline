@@ -1,3 +1,4 @@
+import { withinWindow, zoneForAddress } from "./timezone";
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
 import { decrypt, sign } from "./crypto";
@@ -150,8 +151,13 @@ export async function processOutbox() {
     const msg = await db.emailMessage.findFirst({
       where: { mailboxId: mb.id, status: "QUEUED", scheduledAt: { lte: new Date() }, batchId: null },
       orderBy: { scheduledAt: "asc" },
+      include: { lead: { select: { address: true } } },
     });
     if (!msg) continue;
+    if (mb.sendFromHour !== mb.sendToHour) {
+      const tz = zoneForAddress(msg.lead?.address ?? null) ?? mb.sendTz ?? null;
+      if (!withinWindow(mb.sendFromHour, mb.sendToHour, tz)) continue;
+    }
 
     // Claim it so a second tick can't send it twice
     const claimed = await db.emailMessage.updateMany({ where: { id: msg.id, status: "QUEUED" }, data: { status: "SENDING" } });

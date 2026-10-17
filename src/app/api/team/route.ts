@@ -14,7 +14,7 @@ export async function GET() {
     db.user.findUnique({ where: { id: user.wsId }, select: { id: true, name: true, email: true } }),
     db.user.findMany({
       where: { ownerId: user.wsId, blocked: false },
-      select: { id: true, name: true, email: true, createdAt: true },
+      select: { id: true, name: true, email: true, createdAt: true, teamRole: true },
       orderBy: { createdAt: "asc" },
     }),
     user.isOwner

@@ -3,6 +3,7 @@ import { Instrument_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import { Toaster } from "sonner";
 import { BrandProvider } from "@/components/brand";
+import { I18nProvider } from "@/components/i18n-provider";
 import { ErrorReporter } from "@/components/error-reporter";
 import { RegisterServiceWorker } from "@/components/pwa";
 import { currentBrand, hexToRgbVar } from "@/lib/brand";
@@ -46,18 +47,23 @@ export const viewport = { themeColor: "#0C131F" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // White, professional theme by default; people can switch to dark in Settings
-  const theme = (await cookies()).get("theme")?.value === "dark" ? "dark" : "light";
+  const jar = await cookies();
+  const theme = jar.get("theme")?.value === "dark" ? "dark" : "light";
+  const lang = jar.get("lang")?.value === "ur" ? "ur" : "en";
   const brand = await currentBrand();
   const accent = hexToRgbVar(brand.color);
   return (
     <html
-      lang="en"
+      lang={lang}
+      dir={lang === "ur" ? "rtl" : "ltr"}
       className={sans.variable}
       data-theme={theme}
       style={accent ? ({ "--pin": accent } as React.CSSProperties) : undefined}
     >
       <body className="min-h-screen font-sans text-[15px] leading-6">
-        <BrandProvider value={{ name: brand.name, custom: brand.custom, logo: !brand.custom && Boolean((await getSettings()).platform_logo) }}>{children}</BrandProvider>
+        <BrandProvider value={{ name: brand.name, custom: brand.custom, logo: !brand.custom && Boolean((await getSettings()).platform_logo) }}>
+          <I18nProvider lang={lang}>{children}</I18nProvider>
+        </BrandProvider>
         <RegisterServiceWorker />
         <ErrorReporter />
         <Toaster

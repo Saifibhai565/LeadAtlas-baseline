@@ -6,7 +6,8 @@ export const metadata = { title: "Templates" };
 export default function TemplatesPage() {
   return (
     <>
-      <PageTitle title="Message templates" description="Reusable WhatsApp and email messages. Details like the business name fill in for each lead." />
+      <PageTitle tkey="page.templates"
+        title="Message templates" description="Reusable WhatsApp and email messages. Details like the business name fill in for each lead." />
       <TemplatesView />
     </>
   );

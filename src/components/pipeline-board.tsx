@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BellRing, Search } from "lucide-react";
 import { toast } from "sonner";
+import { useT } from "./i18n-provider";
 import { Input } from "@/components/ui/field";
 import { LeadDrawer } from "./lead-drawer";
 import { cn, formatNumber } from "@/lib/utils";
@@ -20,12 +21,12 @@ type Card = {
 };
 type Column = { stage: string; items: Card[]; count: number; value: number };
 
-const STAGE_INFO: Record<string, { label: string; accent: string }> = {
-  NEW: { label: "New", accent: "bg-muted" },
-  CONTACTED: { label: "Contacted", accent: "bg-info" },
-  INTERESTED: { label: "Interested", accent: "bg-pin" },
-  WON: { label: "Won", accent: "bg-ok" },
-  LOST: { label: "Lost", accent: "bg-danger" },
+const STAGE_INFO: Record<string, { key: string; en: string; accent: string }> = {
+  NEW: { key: "pipe.NEW", en: "New", accent: "bg-muted" },
+  CONTACTED: { key: "pipe.CONTACTED", en: "Contacted", accent: "bg-info" },
+  INTERESTED: { key: "pipe.INTERESTED", en: "Interested", accent: "bg-pin" },
+  WON: { key: "pipe.WON", en: "Won", accent: "bg-ok" },
+  LOST: { key: "pipe.LOST", en: "Lost", accent: "bg-danger" },
 };
 
 function followUpState(iso: string | null) {
@@ -43,6 +44,7 @@ function followUpState(iso: string | null) {
 }
 
 export function PipelineBoard() {
+  const { t } = useT();
   const [columns, setColumns] = useState<Column[] | null>(null);
   const [due, setDue] = useState(0);
   const [q, setQ] = useState("");
@@ -116,7 +118,7 @@ export function PipelineBoard() {
           className="text-[13px] text-pin hover:underline"
           title="Runs searches for the kinds of business and cities you win most"
         >
-          Find more like my wins
+          {t("pipe.findMore","Find more like my wins")}
         </button>
         <button
           onClick={async () => {
@@ -134,7 +136,7 @@ export function PipelineBoard() {
           className="text-[13px] text-pin hover:underline"
           title="Scores give a small boost to the kinds of business you win most"
         >
-          Learn from my wins
+          {t("pipe.learnWins","Learn from my wins")}
         </button>
         <p className="ml-auto text-[13px] text-muted">Drag a card to move it. New shows your highest-scored leads first.</p>
       </div>
@@ -145,7 +147,7 @@ export function PipelineBoard() {
           return (
             <section
               key={col.stage}
-              aria-label={info.label}
+              aria-label={t(info.key, info.en)}
               onDragOver={(e) => {
                 e.preventDefault();
                 setOver(col.stage);
@@ -165,7 +167,7 @@ export function PipelineBoard() {
               <header className="border-b border-line px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className={cn("h-2 w-2 rounded-full", info.accent)} aria-hidden />
-                  <h2 className="text-sm font-semibold">{info.label}</h2>
+                  <h2 className="text-sm font-semibold">{t(info.key, info.en)}</h2>
                   <span className="tabular ml-auto text-[13px] text-muted">{formatNumber(col.count)}</span>
                 </div>
                 {col.value > 0 && <p className="tabular mt-1 text-[12px] text-muted">{formatNumber(col.value)} in deals</p>}

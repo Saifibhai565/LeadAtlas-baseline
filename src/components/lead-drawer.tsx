@@ -15,6 +15,8 @@ import { SignalsPanel } from "./signals-panel";
 import { ReviewTools } from "./review-tools";
 import { AuditList } from "./audit-panels";
 import { LeadDetailsPanel } from "./lead-details";
+import { LeadIntel } from "./lead-intel";
+import { DossierPanel } from "./dossier-panel";
 import { useFeatures } from "./use-features";
 import { ReviewsPanel } from "./reviews-panel";
 import { scoreLabel } from "@/lib/score";
@@ -81,6 +83,11 @@ type Detail = {
   branches: number | null;
   seo: string | null;
   details: string | null;
+  intel: string | null;
+  quality: number | null;
+  intelAt: string | null;
+  dossier: string | null;
+  dossierAt: string | null;
   priceRange: string | null;
   ecom: string | null;
   enrollments: { id: string; status: string; currentStep: number; nextAt: string; sequence: { name: string; steps: string } }[];
@@ -532,6 +539,14 @@ export function LeadDrawer({ id, onClose, onChanged }: { id: string; onClose: ()
 
             <Section title="All details">
               <LeadDetailsPanel lead={lead} />
+            </Section>
+
+            <Section title="Deep check">
+              <LeadIntel lead={lead} onChanged={reload} />
+            </Section>
+
+            <Section title="Research briefing">
+              <DossierPanel lead={lead} ai={Boolean(ai)} onChanged={reload} />
             </Section>
 
             {feats.has("signals") && (

@@ -132,6 +132,17 @@ export const emails = {
       footnote: "You can turn these emails off in Settings.",
     }),
 
+  weeklyReport: (to: string, name: string, d: { winRate: number; won: number; wonValue: number; newLeads: number; contacted: number }, link: string) =>
+    build(to, `Your weekly report: ${d.newLeads} new leads`, {
+      heading: `Your week, ${name.split(" ")[0]}`,
+      paragraphs: [
+        `New leads: ${d.newLeads}. Contacted: ${d.contacted}. Deals won: ${d.won} (value ${d.wonValue.toLocaleString("en-US")}). Win rate: ${d.winRate}%.`,
+        "Open the full report for your funnel, best sending times and mailbox performance.",
+      ],
+      button: { label: "Open full report", url: link },
+      footnote: "You get this every Monday. Turn it off in Analytics.",
+    }),
+
   weeklyDigest: (
     to: string,
     name: string,

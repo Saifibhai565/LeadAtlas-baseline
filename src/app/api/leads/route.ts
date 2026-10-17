@@ -4,6 +4,7 @@ import { kickEnrichment } from "@/lib/enrich";
 import { logActivity, rescoreMissing, STATUS_LABEL } from "@/lib/leads";
 import { emit } from "@/lib/webhooks";
 import { scheduleLearning } from "@/lib/learn";
+import { runAutomations } from "@/lib/automation";
 import { apiUser, fail, unauthorized } from "@/lib/http";
 import { LEAD_STATUSES, leadWhere } from "./query";
 
@@ -27,8 +28,8 @@ export async function GET(req: Request) {
       where,
       orderBy:
         params.get("sort") === "score"
-          ? [{ score: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }]
-          : { createdAt: "desc" },
+          ? [{ pinned: "desc" }, { score: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }]
+          : [{ pinned: "desc" }, { createdAt: "desc" }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
@@ -54,6 +55,7 @@ export async function PATCH(req: Request) {
     await logActivity(user.id, id, "STATUS", `Moved from ${STATUS_LABEL[lead.status] ?? lead.status} to ${STATUS_LABEL[status]}`);
     emit(user.wsId, "lead.status_changed", { id, from: lead.status, to: status }).catch(() => undefined);
     if (status === "WON" || status === "LOST") scheduleLearning(user.wsId);
+    runAutomations(user.wsId, user.id, id, status).catch(() => undefined);
   }
   return NextResponse.json({ ok: true });
 }

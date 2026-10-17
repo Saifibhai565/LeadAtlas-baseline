@@ -24,7 +24,8 @@ export async function POST(req: Request) {
         name,
         email: invite.email,
         passwordHash: await bcrypt.hash(password, 10),
-        ownerId: invite.ownerId,
+        teamRole: "MEMBER",
+      ownerId: invite.ownerId,
         credits: 0,
         emailVerifiedAt: new Date(), // they reached us through the invite sent to this address
         lastLoginAt: new Date(),

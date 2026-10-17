@@ -16,6 +16,249 @@ Yeh Next.js dashboard hai jo peeche **gosom/google-maps-scraper** (Go engine) se
 - Duplicate leads khud hat jati hain
 - Credits system (1 nayi lead = 1 credit), bechne ki buniyad
 
+## Phase 40: Wallet + Buy leads (data marketplace)
+
+- **Wallet (naya page):** customer crypto (USDT TRC20/BEP20) ya bank se deposit kare. Deposit methods woh hi jo Super Admin > Payment methods mein. Amount + transaction hash de, Super Admin confirm kare, balance barh jaye. Poori history
+- **Buy leads (naya page):** customer likhe "restaurant in USA", app batati hai kitni leads mojood hain (jo us ke paas nahi), qeemat, aur balance. "Buy" dabaye to wallet se paise kat kar leads foran us ki Leads list mein. Sirf nayi (duplicate free)
+- **Super Admin > Deposits:** waiting top-ups Approve/Reject (crypto hash blockchain explorer-ready)
+- **Super Admin > Settings:** per-lead price aur minimum deposit
+
+**Zaroori:** data bank mein leads hon tabhi customer khareed sakta hai (Data bank tab se jama karein). Bara paimana = PostgreSQL + live server.
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 39: Admin global scraper + Data bank
+
+- **Super Admin > Data bank:** aap search likhein (ek line mein ek, jaise "restaurant in USA"). System background mein engine se data jama karta hai, aur sab shared data bank (PlaceCache) mein jata hai
+- **Country auto-expand:** "restaurant in USA" khud ba khud bare shehron (New York, LA, Chicago...) ki alag tasks mein toot jata hai. USA, UK, Pakistan, UAE, India, Canada, Australia support
+- Live stats: bank mein kitne businesses, kitni running/waiting, all-time collected. Har task: running/done/failed, kitne add hue, Pause/Resume/Retry/Delete
+- Ek waqt mein 3 tasks (engine par bojh na pade). Engine chalna zaroori
+
+**Zaroori:** laakhon leads ke liye PostgreSQL + live server chahiye. Local (SQLite) par sirf chhota test. Agla hissa: wallet/deposit + customers ke liye lead purchase marketplace.
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 38: AI Autopilot (roz khud leads)
+
+- **AI Autopilot (naya page):** customer batata hai "main kis ko kya bechta hoon" aur kaunse shehar. AI roz khud behtareen searches chun kar nayi leads laata hai (har lead par tareekh)
+- **Do tareeqe:** (a) "Add automatically" — leads seedha list mein, 1 credit per lead; (b) default "suggestions" — leads ek "Suggested" list mein rukti hain, customer jo chahe chune/add kare (credit tab katta hai). Credits ka control customer ke paas
+- Pool pehle istemal hota hai (instant, cheap), phir engine. Credits khatam to Autopilot ruk kar notification
+- Suggested leads normal Leads list mein nahi aati jab tak accept na hon
+
+Nota: bara data (laakhon leads), admin global scraper aur deposit+lead-purchase marketplace agle hisson mein. Un ke liye live server (PostgreSQL) chahiye hoga.
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 37: Template marketplace
+
+- **Template marketplace (naya page):** tayyar WhatsApp/SMS/Email templates (official + customers ke bheje hue). Filter: type, zaban, category, search. "Use this" se ek click mein apne templates (ya sequence) mein. Kuch official Roman Urdu/English templates pehle se
+- **Submit:** Templates page par apna template "Submit to marketplace" (Super Admin approve karta hai)
+- **Super Admin > Marketplace:** waiting submissions approve/hide/delete, aur apne official templates banayein
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 36: Welcome wizard + Starred leads
+
+- **Welcome wizard:** naya customer pehli dafa login kare to ek khush-amdeed window: 4 chhote steps (businesses dhoondna, kaun chahiye, rabta, deal jeetna), phir "Start searching". Dobara nahi aati (Skip ya mukammal ke baad)
+- **Starred leads:** har lead ke naam ke aage sitara (★). Ahem leads star karein; woh upar aa jati hain, aur "★ Starred" filter se sirf wohi
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 35: Automations (Kanban automation)
+
+- **Automations (naya page):** jab lead kisi stage par jaye (New/Contacted/Interested/Won/Lost) to khud kuch ho jaye:
+  - tag lag jaye, follow-up tareekh set ho, email sequence shuru ho, team member ko assign ho, ya note lag jaye
+  - Misal: "Interested hote hi intro email sequence shuru" ya "Won hote hi tag 'client' lagao"
+  - Single aur bulk dono status change par chalti hai. On/off, kitni dafa chali
+- Owner banata hai; team members ki har stage-change par chalti hai
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 34: Meeting booking + weekly report email
+
+- **Meeting booking (naya page):** apna booking link banayein, auqat chunein (kaunse din, kaunse ghante). Prospect link khole, free time chune aur khud book kar le. Owner ko notification + email, booker ko confirmation email. "Upcoming meetings" list
+- **Weekly report email:** Analytics page par toggle: har somwar aap ko khulasa report email ho (win rate, nayi leads, jeeti deals) full report ke link ke saath
+- **Aur Urdu:** meeting page ka unwaan aur nav
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 33: Keyboard shortcuts + aur Urdu
+
+- **Keyboard shortcuts:** `?` dabayein to madad kھулti hai. `g` phir `d/l/s/p/i/e/b/a` = us page par jayein (Dashboard, Leads, Searches, Pipeline, Inbox, Email, Billing, Analytics). `n` = nayi search, `t` = theme badlein, `Ctrl K` = command menu
+- **Aur Urdu:** Pipeline ke columns (New, Contacted...), aur Pipeline/Website checks/Billing/Watches/Templates/Team/Campaigns ke page titles
+
+Update:
+```
+npm install
+```
+
+## Phase 32: Urdu ki aur screens
+
+- **Leads page:** filters, chips, table headings (Business, Contact, Rating, Status, Reach out) Urdu mein
+- **Page titles** (Leads, Searches, Settings, Bulk email/SMS, Analytics) Urdu mein
+- Status aur common lafz (New, Contacted, Won...) ke tarjume
+- Nayi screens aage isi system par: src/lib/i18n.ts mein key add, phir useT().t("key","English")
+
+Update:
+```
+npm install
+```
+
+## Phase 31: Urdu interface (do-zabaan system)
+
+- **Zaban switch:** Settings mein English/Urdu. Urdu chunne par app right-to-left (RTL) ho jati hai aur Nastaliq font lagta hai
+- **System:** ek bilingual string table (src/lib/i18n.ts). Jo key tarjuma ho gayi woh Urdu, baqi khud English par rehti hain (kuch nahi tootta). Sidebar, top bar, dashboard aur aam buttons Urdu mein
+- Agli phases mein baqi screens isi system par thori thori Urdu hoti rahengi. Nayi key sirf i18n.ts mein add karni hoti hai
+
+Update:
+```
+npm install
+```
+(database nahi badla)
+
+## Phase 30: Bulk SMS (naya page)
+
+- **Bulk SMS:** numbers ki list paste karein (ek line mein ek, ya naam ke saath: `0300 1234567, Ali`), ek message likhein, Send. Apne SMS provider (PTA-registered ya Android gateway) se jata hai
+- Live progress: kitne gaye, baqi, fail; Pause/Resume/Cancel; {{name}} har number ke liye bharta hai
+- Sirf un logon ko bhejein jinhon ne ijazat di ho
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 29: Finishing (disposable filter, send hours, directory crawl, phone type)
+
+- **Disposable email filter:** burner/temporary emails (Mailinator, TempMail jaise 50+ domains) khud chhant jati hain, save aur send dono se
+- **Timezone send hours:** har mailbox par "Only send 9am-6pm" (recipient ke local waqt par, address se andaza). Bulk aur sequences dono mein
+- **Directory crawl (Web extractor):** "Follow next-page links" (3/5/10 pages tak). Jaiz directory pages ke page 1,2,3... khud follow, 1 credit per nayi business
+- **Phone line type (Numverify, paid):** Deep check mein mobile / landline / VoIP aur carrier (Super Admin > Integrations mein key)
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 28: AI agents (research briefing, competitor watch)
+
+- **Research briefing (lead panel):** AI ek-page briefing banata hai: business kya hai, strengths, gaps, opening line, talking points, mumkina objections aur behtareen channel. Call se pehle "Copy all". Deep check aur signals ka data istemal karta hai
+- **Competitor watch (naya page):** rivals ke pricing/services page jorein; app schedule par check karti hai aur jab offers/qeematein/services badlein to AI batata hai kya badla, notification ke saath
+- Support AI assistant pehle se mojood (Module 9 ka SDR hissa)
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 27: Security (2FA, roles, allowed networks, privacy)
+
+- **Two-factor sign-in (2FA):** Settings mein set karein. Google Authenticator/Authy ka QR scan, phir login par 6-digit code. Backup codes bhi (phone na ho to). Bina library ke, mehfooz
+- **Team roles:** ab Owner, **Manager** aur Member. Manager team aur leads sambhal sakta hai, lekin billing/settings/integrations sirf Owner. Delete aur Export sirf Owner/Manager. Team page par role dropdown
+- **Allowed networks (IP whitelist):** Owner Settings mein chune hue IP/range daal kar sign-in mehdood kar sakta hai (office/VPN)
+- **Privacy request (GDPR):** lead panel mein "remove personal details": business ke email, phone, owner naam, socials hat jate hain (record rehta hai taake dobara rabta na ho), aur woh emails suppression list mein
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 26: Analytics (naya page)
+
+- **Conversion funnel:** leads found → contacted → interested → won, har qadam par percent aur kitne log aage barhe
+- **Reply sentiment:** aap ke note kiye hue jawab positive/neutral/negative mein bantate
+- **Leads per day:** pichle 30 din ka chart
+- **Mailbox performance:** kaunsi email se zyada opens aate hain
+- **Best time to reach people:** haftay ke din aur ghante ka heatmap (kab emails khulti hain)
+- **ROI:** win rate, jeeti deals ki ginti aur raqam, tool par kharcha
+- **Download report:** saaf report jo browser se "Save as PDF" ho jati hai
+- Super Admin "All customers" bhi dekh sakta hai
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 25: Email deliverability aur warmup (naya page "Deliverability")
+
+- **Mailbox warmup:** aap ki do ya zyada mailboxes aapas mein doston jaisi emails bhejti aur jawab deti hain, taake inbox provider (Gmail/Outlook) un par bharosa kare. Pehle hafton mein raftar aahista barhti hai. Deliverability page se on/off
+- **DNS check (SPF, DKIM, DMARC):** domain daalein, teeno records theek hain ya nahi, score aur har kami ki wajah. Har mailbox par bhi hara/laal nishan
+- **Blacklist check:** sending server ka IP kisi spam blacklist (Spamhaus, Barracuda...) par to nahi
+- **Spam-word checker:** bulk email likhte waqt live "inbox score" aur warnings (jaise "free", "guaranteed", bohat links, images, bari email)
+- **Bounce guardian + reputation:** bohat bounce ho to mailbox khud ruk jati hai, aur har mailbox ka reputation score
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 24: Shared data pool (foran results), statistics panel
+
+- **Shared data pool:** har search mein mila har business (sirf Google ki public maloomat) ek pool mein jama hota hai. Koi bhi customer "bakery in Lahore" search kare to pool se woh businesses **foran** aa jate hain jo us ke paas pehle nahi, phir engine naye dhoondta hai. Goal pool se poora ho jaye to engine ka intezar hi nahi. Kisi ko koi business **do dafa nahi** milta
+- **Super Admin > Data pool:** pool on/off, kitne din purana data dobara dena hai, kul businesses, taaza/purane, kitni dafa reuse hua, top cities aur categories, purana data hatana
+- **Dashboard statistics panel:** 9 tabs (Overview, Contacts, Websites, Social, Signals, Reviews, Pipeline, Outreach, Places), har cheez ki ginti aur percent, click se wahi leads. Super Admin "All customers" bhi dekh sakta hai
+- Search results ab har 3 second mein aate hain (pehle 6)
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
+## Phase 23: Leads ki gehri jaanch (Deep check), owner email, duplicates, HubSpot
+
+Lead panel mein naya hissa **"Deep check"** aur **"All details"**:
+- **Contact quality score** (0-100) har lead par (table mein "Q 82")
+- **Owner email finder:** owner naam + domain se mumkina emails, mail server se check (valid / invalid / catch-all). Note: kai internet providers port 25 band rakhte hain; tab sirf andaza dikhta hai
+- **Website age, SSL kab khatam, server IP, website ki zaban**
+- **Contact form, online booking, live chat, WhatsApp button** hain ya nahi; contact page aur **careers page (hiring)** ke links
+- **Google PageSpeed** (mobile/desktop score) aur **Google Safe Browsing** (hacked/unsafe site)
+- **Reviews trend:** pichle 3 maheene vs us se pehle
+- **Paid data (optional):** Similarweb traffic, Apollo company data, ZeroBounce email verification — keys Super Admin > Integrations mein
+- Har 30 din khuli leads ki website dobara check (data taaza)
+- **Merge duplicates** (Leads page): ek hi phone/website wali leads ek mein, notes aur history ke saath
+- **HubSpot:** Settings mein token, leads select kar ke "To HubSpot". Zoho/Pipedrive ke liye webhooks + Zapier/Make
+- Social links ab rangeen buttons (Pinterest, Telegram, Snapchat, Threads bhi), aur jaali emails (user@domain.com) khud hat jati hain
+
+Update:
+```
+npm install
+npx prisma db push
+```
+
 ## Phase 22: Website/SEO control, payment methods (USD + crypto), Help center
 
 - **Super Admin > Website:** platform name, colour, tagline, **logo**, **favicon** (browser tab icon), SEO page title, description, keywords, **share image** (WhatsApp/Facebook preview), aur poora home page: headline, sub-headline, button text, "How it works", features, FAQ, pricing on/off, footer
